@@ -29,7 +29,7 @@ button.d{color:var(--err)}button:disabled{opacity:.4;cursor:not-allowed}
 .bar{height:22px;border-radius:8px;background:var(--bg);border:1px solid var(--bd);overflow:hidden}.bar i{display:block;height:100%;background:var(--pri)}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.stat b{display:block;font-size:1.8rem}
 .tw{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.92rem}td,th{padding:7px 8px;border-bottom:1px solid var(--bd);text-align:left}
-.photo{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;margin-bottom:10px;background:var(--bg)}.thumb{width:76px;height:76px;object-fit:cover;border-radius:10px;flex:0 0 auto;background:var(--bg)}.ph{display:flex;align-items:center;justify-content:center;color:var(--mut);font-weight:700;border:1px dashed var(--bd)}.cl{display:flex;gap:14px;align-items:center}.lg{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px;font-size:.88rem}.lg i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}.c{text-align:center}.big{font-size:1.1rem}
+.photo{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;margin-bottom:10px;background:var(--bg)}.thumb{width:76px;height:76px;object-fit:cover;border-radius:10px;flex:0 0 auto;background:var(--bg)}.ph{display:flex;align-items:center;justify-content:center;color:var(--mut);font-weight:700;border:1px dashed var(--bd)}.cl{display:flex;gap:14px;align-items:center}.lg{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px;font-size:.88rem}.lg i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}.two .card{margin:0}@media(max-width:760px){.two{grid-template-columns:1fr}}.c{text-align:center}.big{font-size:1.1rem}
 </style>
 </head>
 <body>
@@ -51,6 +51,7 @@ const CFG={
 };
 /* ==================================================================== */
 
+const MODE='vote'; // 'vote' = halaman pemilih, 'admin' = halaman admin
 const GROUPS=[];['7','8','9'].forEach(g=>'ABCDEFG'.split('').forEach(c=>GROUPS.push(g+c)));GROUPS.push('Guru','Karyawan');
 const S={voters:{},candidates:{},votes:{},open:false,ready:false};
 const CD={},COL=['#2457d6','#e08a00','#12a37f','#c0392b','#8e44ad','#16a2b8'];
@@ -69,7 +70,8 @@ if(configured){
       onSnapshot(collection(db,'candidates'),s=>{const o={};s.forEach(x=>o[x.id]=x.data());S.candidates=o;render()},()=>{});
       onSnapshot(doc(db,'settings','election'),s=>{const x=s.data();S.open=!!(x&&x.open);render()},()=>{});
     }
-    if(u.isAnonymous){admin=false;stopAdmin();if(view==='admin'||view==='login')view='vote'}
+    if(u.isAnonymous){admin=false;stopAdmin()}
+    else if(MODE==='vote'){await signOut(auth);return}
     else{admin=true;startAdmin()}
     S.ready=true;render(true);
   });
@@ -208,12 +210,12 @@ function render(force){
   if(!force&&a&&$('app').contains(a)&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;
   if(!configured){$('app').innerHTML='<div class="card"><h2>Belum dikonfigurasi</h2><p>Isi konfigurasi Firebase di <code>index.html</code> (lihat README.md).</p></div>';return}
   const open=S.open?'<span class="chip on">Pemilihan DIBUKA</span>':'<span class="chip off">Pemilihan DITUTUP</span>';
-  const btn=admin?`<button onclick="tog()">${view==='admin'?'Layar Pemilih':'Admin'}</button><button onclick="logout()">Keluar</button>`:`<button onclick="view='login';render(true)">Login Admin</button>`;
-  $('app').innerHTML=`<header><h1>Pemilihan Ketua OSIS</h1><div class="row" style="flex:0 1 auto">${open}${btn}</div></header>`
-    +(fatal?`<div class="card err">${esc(fatal)}</div>`:!S.ready?'<div class="card">Memuat...</div>':view==='login'&&!admin?loginView():view==='admin'&&admin?adminView():voteView());
+  const A=MODE==='admin',btn=A&&admin?`<button onclick="logout()">Keluar</button>`:'';
+  $('app').innerHTML=`<header><h1>${A?'Panel Admin – Pemilihan OSIS':'Pemilihan Ketua OSIS'}</h1><div class="row" style="flex:0 1 auto">${open}${btn}</div></header>`
+    +(fatal?`<div class="card err">${esc(fatal)}</div>`:!S.ready?'<div class="card">Memuat...</div>':A?(admin?adminView():loginView()):voteView());
 }
 function tog(){view=view==='admin'?'vote':'admin';render(true)}
-function loginView(){return `<div class="card"><h2>Login admin</h2><div class="row"><input id="em" type="email" placeholder="Email admin" autocomplete="username"><input id="pw" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')adminLogin()"><button class="p" onclick="adminLogin()">Masuk</button></div><p class="err">${esc(loginMsg)}</p><button onclick="view='vote';render(true)">Kembali</button></div>`}
+function loginView(){return `<div class="card"><h2>Login admin</h2><div class="row"><input id="em" type="email" placeholder="Email admin" autocomplete="username"><input id="pw" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')adminLogin()"><button class="p" onclick="adminLogin()">Masuk</button></div><p class="err">${esc(loginMsg)}</p></div>`}
 function voteView(){
   if(V.stage==='done')return `<div class="card c"><div class="no ok">✓</div><h2 class="big">Terima kasih, suara Anda telah tercatat.</h2><p class="mut">Layar akan kembali otomatis untuk pemilih berikutnya.</p></div>`;
   if(V.stage==='ballot'){
@@ -235,25 +237,21 @@ function adminView(){
 const sorted=()=>Object.entries(S.candidates).sort((a,b)=>a[1].no-b[1].no);
 const img=(c,cls)=>String(c.photo||'').startsWith('data:image/')?`<img class="${cls}" src="${c.photo}" alt="">`:`<div class="${cls} ph">No ${esc(c.no)}</div>`;
 const pname=c=>esc(c.name)+(c.wakil?' &amp; '+esc(c.wakil):'');
-function chart(cs){
-  const vs=Object.values(S.votes).filter(v=>v.t).sort((a,b)=>a.t-b.t);
-  if(!vs.length)return '<p class="mut">Kurva akan muncul setelah ada suara masuk.</p>';
-  const W=640,H=280,L=36,R=12,T=12,B=30,t0=vs[0].t,t1=Math.max(vs[vs.length-1].t,t0+60000),cnt={},pts={};
-  cs.forEach(([id])=>{cnt[id]=0;pts[id]=[[t0,0]]});
-  vs.forEach(v=>{if(!(v.c in cnt))return;pts[v.c].push([v.t,cnt[v.c]]);cnt[v.c]++;pts[v.c].push([v.t,cnt[v.c]])});
-  cs.forEach(([id])=>pts[id].push([t1,cnt[id]]));
-  const mx=Math.max(1,...Object.values(cnt)),st=Math.ceil(mx/5),X=t=>L+(t-t0)/(t1-t0)*(W-L-R),Y=n=>H-B-n/mx*(H-B-T);
+function bars(cs,t){
+  if(!cs.length)return '<p class="mut">Belum ada kandidat.</p>';
+  const W=420,H=300,L=34,R=10,T=28,B=34,n=cs.length,total=Object.keys(S.votes).length,mx=Math.max(1,...cs.map(([id])=>t[id]||0)),st=Math.ceil(mx/5),top=st*Math.ceil(mx/st);
+  const Y=v=>H-B-v/top*(H-B-T),sl=(W-L-R)/n,bw=Math.min(72,sl*0.6);
   let g='';
-  for(let n=0;n<=mx;n+=st)g+=`<line x1="${L}" x2="${W-R}" y1="${Y(n)}" y2="${Y(n)}" style="stroke:var(--bd)"/><text x="${L-6}" y="${Y(n)+4}" text-anchor="end" font-size="11" style="fill:var(--mut)">${n}</text>`;
-  for(let k=0;k<=4;k++){const t=t0+(t1-t0)*k/4;g+=`<text x="${X(t)}" y="${H-8}" text-anchor="middle" font-size="11" style="fill:var(--mut)">${new Date(t).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}</text>`}
-  const lines=cs.map(([id],i)=>`<polyline fill="none" stroke-width="2.5" stroke-linejoin="round" stroke="${COL[i%6]}" points="${pts[id].map(p=>X(p[0]).toFixed(1)+','+Y(p[1]).toFixed(1)).join(' ')}"/>`).join('');
-  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">${g}${lines}</svg><div class="lg">${cs.map(([id,c],i)=>`<span><i style="background:${COL[i%6]}"></i>No ${esc(c.no)} ${pname(c)} (${cnt[id]})</span>`).join('')}</div>`;
+  for(let v=0;v<=top;v+=st)g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" style="stroke:var(--bd)"/><text x="${L-6}" y="${Y(v)+4}" text-anchor="end" font-size="11" style="fill:var(--mut)">${v}</text>`;
+  const bar=cs.map(([id,c],i)=>{const v=t[id]||0,x=L+sl*i+(sl-bw)/2,y=Y(v);
+    return `<rect x="${x}" y="${y}" width="${bw}" height="${H-B-y}" rx="6" fill="${COL[i%6]}"/><text x="${x+bw/2}" y="${y-15}" text-anchor="middle" font-size="14" font-weight="700" style="fill:var(--tx)">${v}</text><text x="${x+bw/2}" y="${y-3}" text-anchor="middle" font-size="11" style="fill:var(--mut)">${total?Math.round(v/total*100):0}%</text><text x="${x+bw/2}" y="${H-12}" text-anchor="middle" font-size="12" style="fill:var(--tx)">No ${esc(c.no)}</text>`}).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">${g}${bar}</svg><div class="lg">${cs.map(([id,c],i)=>`<span><i style="background:${COL[i%6]}"></i>No ${esc(c.no)} ${pname(c)}</span>`).join('')}</div>`;
 }
 function liveTab(){
   const vs=Object.values(S.voters),done=vs.filter(v=>v.voted).length,t=tally(),total=Object.keys(S.votes).length,mx=Math.max(1,...Object.values(t)),cs=sorted();
   return `<div class="stats card"><div class="stat"><span class="mut">Terdaftar</span><b>${vs.length}</b></div><div class="stat"><span class="mut">Sudah memilih</span><b>${done}</b></div><div class="stat"><span class="mut">Belum memilih</span><b>${vs.length-done}</b></div><div class="stat"><span class="mut">Partisipasi</span><b>${vs.length?Math.round(done/vs.length*100):0}%</b></div></div>
-  <div class="card"><h2>Perolehan suara (live)</h2>${cs.map(([id,c],i)=>{const n=t[id]||0;return `<div class="cl" style="margin-bottom:16px">${img(c,'thumb')}<div style="flex:1;min-width:0"><div class="row" style="flex-wrap:nowrap"><b style="flex:1;color:${COL[i%6]}">Paslon No ${esc(c.no)}</b><b style="flex:0 0 auto">${n} suara (${total?Math.round(n/total*100):0}%)</b></div><div class="mut">Ketua: <b>${esc(c.name)}</b>${c.wakil?' · Wakil: <b>'+esc(c.wakil)+'</b>':''}</div><div class="bar" style="margin-top:6px"><i style="width:${n/mx*100}%;background:${COL[i%6]}"></i></div></div></div>`}).join('')||'<span class="mut">Belum ada kandidat.</span>'}</div>
-  <div class="card"><h2>Kurva perolehan suara (kumulatif)</h2>${chart(cs)}</div>
+  <div class="two"><div class="card"><h2>Perolehan suara (live)</h2>${cs.map(([id,c],i)=>{const n=t[id]||0;return `<div class="cl" style="margin-bottom:16px">${img(c,'thumb')}<div style="flex:1;min-width:0"><div class="row" style="flex-wrap:nowrap"><b style="flex:1;color:${COL[i%6]}">Paslon No ${esc(c.no)}</b><b style="flex:0 0 auto">${n} suara (${total?Math.round(n/total*100):0}%)</b></div><div class="mut">Ketua: <b>${esc(c.name)}</b>${c.wakil?' · Wakil: <b>'+esc(c.wakil)+'</b>':''}</div><div class="bar" style="margin-top:6px"><i style="width:${n/mx*100}%;background:${COL[i%6]}"></i></div></div></div>`}).join('')||'<span class="mut">Belum ada kandidat.</span>'}</div>
+  <div class="card"><h2>Diagram batang suara</h2>${bars(cs,t)}</div></div>
   <div class="card"><h2>Partisipasi per kelas</h2><div class="tw"><table><tr><th>Kelompok</th><th class="c">Terdaftar</th><th class="c">Memilih</th><th class="c">%</th></tr>${GROUPS.map(g=>{const a=vs.filter(v=>v.group===g),d=a.filter(v=>v.voted).length;return `<tr><td>${g}</td><td class="c">${a.length}</td><td class="c">${d}</td><td class="c">${a.length?Math.round(d/a.length*100):0}%</td></tr>`}).join('')}</table></div></div>`;
 }
 function votersTab(){

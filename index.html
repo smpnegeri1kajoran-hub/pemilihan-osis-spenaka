@@ -207,9 +207,14 @@ function ctrlTab(){
   <div class="card"><h2>Reset</h2><p class="mut">Menghapus semua suara dan status memilih. Gunakan hanya untuk uji coba sebelum hari-H.</p><button class="d" onclick="resetAll()">${armed?'Klik lagi untuk konfirmasi reset':'Reset semua suara'}</button></div>`;
 }
 
-Object.assign(window,{doLogin,submitVote,adminLogin,logout,addVoter,bulkAdd,addCand,setOpen,delDoc,resetAll,exportCsv,tog,
-  pick:id=>{V.sel=id;render(true)},cancelV:()=>{V={stage:'login'};render(true)},
-  get view(){return view},set view(v){view=v},get tab(){return tab},set tab(v){tab=v},get q(){return q},set q(v){q=v},get note(){return note},set note(v){note=v},render});
+Object.assign(window,{doLogin,submitVote,adminLogin,logout,addVoter,bulkAdd,addCand,setOpen,delDoc,resetAll,exportCsv,tog,render,
+  pick:id=>{V.sel=id;render(true)},cancelV:()=>{V={stage:'login'};render(true)}});
+Object.defineProperties(window,{
+  view:{get:()=>view,set:v=>{view=v},configurable:true},
+  tab:{get:()=>tab,set:v=>{tab=v},configurable:true},
+  q:{get:()=>q,set:v=>{q=v},configurable:true},
+  note:{get:()=>note,set:v=>{note=v},configurable:true}
+});
 </script>
 </body>
 </html>

@@ -102,7 +102,7 @@ function stopAdmin(){unsubs.forEach(f=>f());unsubs=[];S.voters={};S.votes={}}
 async function doLogin(){
   const id=clean($('nid').value);
   const m=t=>{V.msg=t;render(true)};
-  if(!id)return m('Masukkan NISN / ID.');
+  if(!id)return m('Masukkan NISN / NIP / ID');
   if(!S.open)return m('Pemilihan belum dibuka atau sudah ditutup.');
   try{
     const s=await getDoc(doc(db,'voters',id));
@@ -242,7 +242,7 @@ function voteView(){
     ${V.msg?`<p class="err">${esc(V.msg)}</p>`:''}`;
   }
   return `<div class="card lc"><h2>Masuk untuk memilih</h2><p class="mut">Masukkan NISN (siswa) atau NIP/ID (guru &amp; karyawan).</p>
-    <div class="row"><input id="nid" inputmode="numeric" autocomplete="off" placeholder="NISN / ID" onkeydown="if(event.key==='Enter')doLogin()"><button class="p" onclick="doLogin()">Masuk</button></div>
+    <div class="row"><input id="nid" inputmode="numeric" autocomplete="off" placeholder="NISN / NIP / ID" onkeydown="if(event.key==='Enter')doLogin()"><button class="p" onclick="doLogin()">Masuk</button></div>
     ${V.msg?`<p class="err">${esc(V.msg)}</p>`:''}</div>`;
 }
 function adminView(){
@@ -292,7 +292,7 @@ function presentView(){
 function votersTab(){
   const ql=q.toLowerCase(),all=Object.entries(S.voters).filter(([id,v])=>!ql||id.toLowerCase().includes(ql)||String(v.name).toLowerCase().includes(ql)||String(v.group).toLowerCase()===ql);
   return `<div class="card"><h2>Impor dari Excel</h2><p class="mut">Kolom: <b>NISN/ID, Nama, Kelas</b> (baris pertama boleh berupa judul). Format kolom NISN sebagai Teks agar angka 0 di depan tidak hilang. Kelas ditulis 7A, 8B, 9C, Guru, atau Karyawan.</p><div class="row"><input id="xf" type="file" accept=".xlsx,.xls,.csv"><button class="p" onclick="importExcel()">Impor file</button><button onclick="template()">Unduh template</button></div></div>
-  <div class="card"><h2>Tambah pemilih yang belum terdaftar</h2><div class="row"><input id="vid" placeholder="NISN / ID"><input id="vnm" placeholder="Nama lengkap"><select id="vg">${GROUPS.map(g=>`<option>${g}</option>`).join('')}</select><button class="p" onclick="addVoter()">Tambah</button></div></div>
+  <div class="card"><h2>Tambah pemilih yang belum terdaftar</h2><div class="row"><input id="vid" placeholder="NISN / NIP / ID"><input id="vnm" placeholder="Nama lengkap"><select id="vg">${GROUPS.map(g=>`<option>${g}</option>`).join('')}</select><button class="p" onclick="addVoter()">Tambah</button></div></div>
   <div class="card"><h2>Tempel banyak sekaligus</h2><p class="mut">Satu baris per orang: NISN, Nama, Kelas.</p><textarea id="bulk" rows="3"></textarea><div style="margin-top:8px"><button onclick="bulkAdd()">Impor teks</button></div></div>
   <div class="card"><h2>Daftar pemilih (${all.length})</h2><input id="qs" placeholder="Cari NISN, nama, atau kelas" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._t);window._t=setTimeout(()=>render(true),250)" style="margin-bottom:10px"><div class="tw"><table><tr><th>ID</th><th>Nama</th><th>Kelas</th><th>Status</th><th></th></tr>${all.slice(0,80).map(([id,v])=>`<tr><td>${esc(id)}</td><td>${esc(v.name)}</td><td>${esc(v.group)}</td><td>${v.voted?'<span class="ok">Sudah</span>':'<span class="mut">Belum</span>'}</td><td>${v.voted?'':`<button class="d" onclick="delDoc('voters','${esc(id)}')">Hapus</button>`}</td></tr>`).join('')}</table></div>${all.length>80?'<p class="mut">Menampilkan 80 pertama, gunakan pencarian.</p>':''}</div>`;
 }

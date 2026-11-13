@@ -29,7 +29,7 @@ button.d{color:var(--err)}button:disabled{opacity:.4;cursor:not-allowed}
 .bar{height:22px;border-radius:8px;background:var(--bg);border:1px solid var(--bd);overflow:hidden}.bar i{display:block;height:100%;background:var(--pri)}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.stat b{display:block;font-size:1.8rem}
 .tw{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.92rem}td,th{padding:7px 8px;border-bottom:1px solid var(--bd);text-align:left}
-.photo{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;margin-bottom:10px;background:var(--bg)}.thumb{width:76px;height:76px;object-fit:cover;border-radius:10px;flex:0 0 auto;background:var(--bg)}.ph{display:flex;align-items:center;justify-content:center;color:var(--mut);font-weight:700;border:1px dashed var(--bd)}.cl{display:flex;gap:14px;align-items:center}.lg{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px;font-size:.88rem}.lg i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}.two .card{margin:0}@media(max-width:760px){.two{grid-template-columns:1fr}}.c{text-align:center}.big{font-size:1.1rem}
+.photo{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;margin-bottom:10px;background:var(--bg)}.thumb{width:76px;height:76px;object-fit:cover;border-radius:10px;flex:0 0 auto;background:var(--bg)}.ph{display:flex;align-items:center;justify-content:center;color:var(--mut);font-weight:700;border:1px dashed var(--bd)}.cl{display:flex;gap:14px;align-items:center}.lg{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px;font-size:.88rem}.lg i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}.two .card{margin:0}@media(max-width:760px){.two{grid-template-columns:1fr}}.hd{flex-direction:column;justify-content:center;text-align:center;gap:6px;margin-bottom:20px}.hd h1{font-size:1.7rem}.logo{height:92px;width:auto;max-width:60%;object-fit:contain}.sch{color:var(--mut);font-size:1.05rem;font-weight:600;letter-spacing:.02em}.c{text-align:center}.big{font-size:1.1rem}
 </style>
 </head>
 <body>
@@ -211,7 +211,9 @@ function render(force){
   if(!configured){$('app').innerHTML='<div class="card"><h2>Belum dikonfigurasi</h2><p>Isi konfigurasi Firebase di <code>index.html</code> (lihat README.md).</p></div>';return}
   const open=S.open?'<span class="chip on">Pemilihan DIBUKA</span>':'<span class="chip off">Pemilihan DITUTUP</span>';
   const A=MODE==='admin',btn=A&&admin?`<button onclick="logout()">Keluar</button>`:'';
-  $('app').innerHTML=`<header><h1>${A?'Panel Admin – Pemilihan OSIS':'Pemilihan Ketua OSIS'}</h1><div class="row" style="flex:0 1 auto">${open}${btn}</div></header>`
+  const head=A?`<header><h1>Panel Admin – Pemilihan OSIS</h1><div class="row" style="flex:0 1 auto">${open}${btn}</div></header>`
+    :`<header class="hd"><img class="logo" src="logo.png" alt="Logo SMP Negeri 1 Kajoran" onerror="this.remove()"><h1>Pemilihan Ketua OSIS</h1><div class="sch">SMP Negeri 1 Kajoran</div><div>${open}</div></header>`;
+  $('app').innerHTML=head
     +(fatal?`<div class="card err">${esc(fatal)}</div>`:!S.ready?'<div class="card">Memuat...</div>':A?(admin?adminView():loginView()):voteView());
 }
 function tog(){view=view==='admin'?'vote':'admin';render(true)}

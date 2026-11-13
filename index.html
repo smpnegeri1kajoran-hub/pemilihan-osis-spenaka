@@ -219,7 +219,7 @@ function render(force){
   const a=document.activeElement;
   if(!force&&a&&$('app').contains(a)&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;
   if(!configured){$('app').innerHTML='<div class="card"><h2>Belum dikonfigurasi</h2><p>Isi konfigurasi Firebase di <code>index.html</code> (lihat README.md).</p></div>';return}
-  const open=S.open?'<span class="chip on">Pemilihan DIBUKA</span>':'<span class="chip off">Pemilihan DITUTUP</span>';
+  const open=S.open?'<span class="chip on">PEMILIHAN DIBUKA</span>':'<span class="chip off">PEMILIHAN DITUTUP</span>';
   const A=MODE==='admin',btn='';
   if(present&&S.open)present=false;
   const pm=A&&admin&&present;document.body.classList.toggle('pm',pm);

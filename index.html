@@ -29,22 +29,31 @@ button.d{color:var(--err)}button:disabled{opacity:.4;cursor:not-allowed}
 .bar{height:22px;border-radius:8px;background:var(--bg);border:1px solid var(--bd);overflow:hidden}.bar i{display:block;height:100%;background:var(--pri)}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.stat b{display:block;font-size:1.8rem}
 .tw{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.92rem}td,th{padding:7px 8px;border-bottom:1px solid var(--bd);text-align:left}
-.c{text-align:center}.big{font-size:1.1rem}
+.photo{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;margin-bottom:10px;background:var(--bg)}.thumb{width:76px;height:76px;object-fit:cover;border-radius:10px;flex:0 0 auto;background:var(--bg)}.ph{display:flex;align-items:center;justify-content:center;color:var(--mut);font-weight:700;border:1px dashed var(--bd)}.cl{display:flex;gap:14px;align-items:center}.lg{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px;font-size:.88rem}.lg i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}.c{text-align:center}.big{font-size:1.1rem}
 </style>
 </head>
 <body>
 <div class="w"><div id="app"></div></div>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {getAuth,onAuthStateChanged,signInAnonymously,signInWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {getFirestore,collection,doc,getDoc,setDoc,updateDoc,deleteDoc,onSnapshot,writeBatch} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ====== ISI DENGAN KONFIGURASI FIREBASE ANDA (lihat README.md) ====== */
-const CFG={apiKey:"AIzaSyD-6bziU2pvc7HKzN_enmqTFGr92N8mO90",authDomain:"pemilu-osis-spenaka.firebaseapp.com",projectId:"pemilu-osis-spenaka",appId:"1:727213622696:web:cc4db7cecfba62f1d0499d"};
+const CFG={
+  apiKey:"AIzaSyD-6bziU2pvc7HKzN_enmqTFGr92N8mO90",
+  authDomain:"pemilu-osis-spenaka.firebaseapp.com",
+  projectId:"pemilu-osis-spenaka",
+  storageBucket:"pemilu-osis-spenaka.firebasestorage.app",
+  messagingSenderId:"727213622696",
+  appId:"1:727213622696:web:cc4db7cecfba62f1d0499d"
+};
 /* ==================================================================== */
 
 const GROUPS=[];['7','8','9'].forEach(g=>'ABCDEFG'.split('').forEach(c=>GROUPS.push(g+c)));GROUPS.push('Guru','Karyawan');
 const S={voters:{},candidates:{},votes:{},open:false,ready:false};
+const CD={},COL=['#2457d6','#e08a00','#12a37f','#c0392b','#8e44ad','#16a2b8'];
 let admin=false,view='vote',tab='live',V={stage:'login'},q='',armed=false,note='',fatal='',loginMsg='',unsubs=[],pub=false;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -115,23 +124,62 @@ async function addVoter(){
   if(S.voters[id]){note='ID '+id+' sudah ada di daftar.';return render(true)}
   await setDoc(doc(db,'voters',id),{name:nm,group:g,voted:false});note='Pemilih '+nm+' ditambahkan.';render(true);
 }
-async function bulkAdd(){
-  const rows=$('bulk').value.split('\n').map(l=>l.split(/[,;\t]/).map(x=>x.trim())).filter(r=>r[0]&&r[1]);
-  let n=0,skip=0,b=writeBatch(db),c=0;
+const normGroup=g=>{let x=String(g||'').toUpperCase().replace(/KELAS|\s|-|\./g,'').replace(/^VIII/,'8').replace(/^VII/,'7').replace(/^IX/,'9');return GROUPS.find(k=>k.toUpperCase()===x)||String(g||'').trim()||'-'};
+async function importRows(rows){
+  let n=0,skip=0,b=writeBatch(db),c=0;const seen={};
   for(const r of rows){
-    const id=clean(r[0]);if(!id||S.voters[id]){skip++;continue}
-    const g=GROUPS.find(x=>x.toLowerCase()===(r[2]||'').toLowerCase())||r[2]||'-';
-    b.set(doc(db,'voters',id),{name:r[1],group:g,voted:false});n++;c++;
+    const id=clean(r[0]),nm=String(r[1]||'').trim();
+    if(!id||!nm||S.voters[id]||seen[id]){skip++;continue}
+    seen[id]=1;b.set(doc(db,'voters',id),{name:nm,group:normGroup(r[2]),voted:false});n++;c++;
     if(c>=400){await b.commit();b=writeBatch(db);c=0}
   }
   if(c)await b.commit();
-  note=n+' pemilih ditambahkan, '+skip+' dilewati (duplikat/kosong).';render(true);
+  note=n+' pemilih berhasil ditambahkan, '+skip+' dilewati (duplikat/kosong).';render(true);
 }
+async function bulkAdd(){
+  await importRows($('bulk').value.split('\n').map(l=>l.split(/[,;\t]/).map(x=>x.trim())))
+}
+async function importExcel(){
+  const f=$('xf').files[0];
+  if(!f){note='Pilih file Excel terlebih dahulu.';return render(true)}
+  if(!window.XLSX){note='Pustaka Excel gagal dimuat. Periksa koneksi internet lalu muat ulang halaman.';return render(true)}
+  try{
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
+    let rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:''}).map(r=>r.map(x=>String(x).trim())).filter(r=>r.some(x=>x));
+    let ci=0,ni=1,gi=2;const h=rows[0]||[],fi=re=>h.findIndex(x=>re.test(x));
+    if(h.some(x=>/nisn|nip|nama/i.test(x))){
+      const a=fi(/nisn|nip|^id$|nomor/i),b=fi(/nama/i),c=fi(/kelas|rombel|kelompok/i);
+      if(a>=0)ci=a;if(b>=0)ni=b;if(c>=0)gi=c;rows=rows.slice(1);
+    }
+    await importRows(rows.map(r=>[r[ci],r[ni],r[gi]]));
+  }catch(e){note='Gagal membaca file. Gunakan format .xlsx, .xls, atau .csv.';render(true)}
+}
+function template(){
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeffNISN,Nama,Kelas\n0012345678,Contoh Siswa,7A\n198001012005011001,Contoh Guru,Guru\n'],{type:'text/csv'}));a.download='template-pemilih.csv';a.click();
+}
+const clearCD=()=>Object.keys(CD).forEach(k=>delete CD[k]);
 async function addCand(){
-  const no=$('cno').value.trim(),nm=$('cnm').value.trim(),vs=$('cvs').value.trim();
-  if(!no||!nm){note='Nomor urut dan nama wajib diisi.';return render(true)}
-  await setDoc(doc(db,'candidates','c'+clean(no)),{no:+no||0,name:nm,vision:vs});render(true);
+  const no=String(CD.no||'').trim(),nm=(CD.name||'').trim(),wk=(CD.wakil||'').trim();
+  if(!no||!nm||!wk){note='Nomor urut, calon ketua, dan calon wakil wajib diisi.';return render(true)}
+  const id='c'+clean(no),old=S.candidates[id]||{};
+  try{
+    await setDoc(doc(db,'candidates',id),{no:+no||0,name:nm,wakil:wk,vision:(CD.vision||'').trim(),photo:CD.photo||old.photo||''});
+    note='Paslon No '+no+' tersimpan.';clearCD();
+  }catch(e){note='Gagal menyimpan paslon. Periksa koneksi atau ukuran foto.'}
+  render(true);
 }
+function pickPhoto(inp){
+  const f=inp.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{const im=new Image();
+    im.onload=()=>{const m=480,k=Math.min(1,m/Math.max(im.width,im.height)),c=document.createElement('canvas');
+      c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+      CD.photo=c.toDataURL('image/jpeg',0.8);render(true)};
+    im.onerror=()=>{note='File gambar tidak bisa dibaca.';render(true)};im.src=r.result};
+  r.readAsDataURL(f);
+}
+function editCand(id){const c=S.candidates[id];clearCD();Object.assign(CD,{id,no:c.no,name:c.name,wakil:c.wakil||'',vision:c.vision||'',photo:c.photo||''});render(true)}
+function cancelCD(){clearCD();render(true)}
 async function setOpen(b){await setDoc(doc(db,'settings','election'),{open:b})}
 async function delDoc(col,id){await deleteDoc(doc(db,col,id))}
 async function resetAll(){
@@ -148,7 +196,7 @@ async function resetAll(){
 function tally(){const t={};Object.values(S.votes).forEach(v=>t[v.c]=(t[v.c]||0)+1);return t}
 function exportCsv(){
   const t=tally(),L=['Hasil,No,Nama,Suara'];
-  Object.entries(S.candidates).sort((a,b)=>a[1].no-b[1].no).forEach(([id,c])=>L.push(['Kandidat',c.no,'"'+c.name+'"',t[id]||0].join(',')));
+  Object.entries(S.candidates).sort((a,b)=>a[1].no-b[1].no).forEach(([id,c])=>L.push(['Kandidat',c.no,'"'+c.name+(c.wakil?' & '+c.wakil:'')+'"',t[id]||0].join(',')));
   L.push('','Kelompok,Terdaftar,Sudah memilih');
   GROUPS.forEach(g=>{const a=Object.values(S.voters).filter(v=>v.group===g);L.push([g,a.length,a.filter(v=>v.voted).length].join(','))});
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([L.join('\n')],{type:'text/csv'}));a.download='hasil-osis.csv';a.click();
@@ -171,8 +219,8 @@ function voteView(){
   if(V.stage==='ballot'){
     const cs=Object.entries(S.candidates).sort((a,b)=>a[1].no-b[1].no);
     return `<div class="card"><h2>Halo, ${esc(V.name)} <span class="mut">(${esc(V.group)})</span></h2><p class="mut">Pilih salah satu kandidat, lalu tekan Kirim Suara.</p></div>
-    <div class="grid">${cs.map(([id,c])=>`<button class="cand ${V.sel===id?'s':''}" onclick="pick('${id}')"><div class="no">${esc(c.no)}</div><b class="big">${esc(c.name)}</b><div class="mut">${esc(c.vision)}</div></button>`).join('')||'<div class="card">Belum ada kandidat.</div>'}</div>
-    <div class="card row" style="margin-top:14px"><span>${V.sel&&S.candidates[V.sel]?'Pilihan: No '+esc(S.candidates[V.sel].no)+' – '+esc(S.candidates[V.sel].name):'Belum memilih'}</span><button onclick="cancelV()">Batal</button><button class="p" ${V.sel&&!V.busy?'':'disabled'} onclick="submitVote()">${V.busy?'Menyimpan...':'Kirim Suara'}</button></div>
+    <div class="grid">${cs.map(([id,c])=>`<button class="cand ${V.sel===id?'s':''}" onclick="pick('${id}')">${img(c,'photo')}<div class="no">${esc(c.no)}</div><b class="big">${esc(c.name)}</b>${c.wakil?`<div class="big">&amp; ${esc(c.wakil)}</div>`:''}<div class="mut" style="margin-top:6px">${esc(c.vision)}</div></button>`).join('')||'<div class="card">Belum ada kandidat.</div>'}</div>
+    <div class="card row" style="margin-top:14px"><span>${V.sel&&S.candidates[V.sel]?'Pilihan: No '+esc(S.candidates[V.sel].no)+' – '+pname(S.candidates[V.sel]):'Belum memilih'}</span><button onclick="cancelV()">Batal</button><button class="p" ${V.sel&&!V.busy?'':'disabled'} onclick="submitVote()">${V.busy?'Menyimpan...':'Kirim Suara'}</button></div>
     ${V.msg?`<p class="err">${esc(V.msg)}</p>`:''}`;
   }
   return `<div class="card"><h2>Masuk untuk memilih</h2><p class="mut">Masukkan NISN (siswa) atau NIP/ID (guru &amp; karyawan).</p>
@@ -184,30 +232,53 @@ function adminView(){
   return `<div class="tabs">${T.map(t=>`<button class="${tab===t[0]?'a':''}" onclick="tab='${t[0]}';note='';render(true)">${t[1]}</button>`).join('')}</div>`
    +(note?`<p class="ok">${esc(note)}</p>`:'')+({live:liveTab,voters:votersTab,cands:candsTab,ctrl:ctrlTab}[tab])();
 }
+const sorted=()=>Object.entries(S.candidates).sort((a,b)=>a[1].no-b[1].no);
+const img=(c,cls)=>String(c.photo||'').startsWith('data:image/')?`<img class="${cls}" src="${c.photo}" alt="">`:`<div class="${cls} ph">No ${esc(c.no)}</div>`;
+const pname=c=>esc(c.name)+(c.wakil?' &amp; '+esc(c.wakil):'');
+function chart(cs){
+  const vs=Object.values(S.votes).filter(v=>v.t).sort((a,b)=>a.t-b.t);
+  if(!vs.length)return '<p class="mut">Kurva akan muncul setelah ada suara masuk.</p>';
+  const W=640,H=280,L=36,R=12,T=12,B=30,t0=vs[0].t,t1=Math.max(vs[vs.length-1].t,t0+60000),cnt={},pts={};
+  cs.forEach(([id])=>{cnt[id]=0;pts[id]=[[t0,0]]});
+  vs.forEach(v=>{if(!(v.c in cnt))return;pts[v.c].push([v.t,cnt[v.c]]);cnt[v.c]++;pts[v.c].push([v.t,cnt[v.c]])});
+  cs.forEach(([id])=>pts[id].push([t1,cnt[id]]));
+  const mx=Math.max(1,...Object.values(cnt)),st=Math.ceil(mx/5),X=t=>L+(t-t0)/(t1-t0)*(W-L-R),Y=n=>H-B-n/mx*(H-B-T);
+  let g='';
+  for(let n=0;n<=mx;n+=st)g+=`<line x1="${L}" x2="${W-R}" y1="${Y(n)}" y2="${Y(n)}" style="stroke:var(--bd)"/><text x="${L-6}" y="${Y(n)+4}" text-anchor="end" font-size="11" style="fill:var(--mut)">${n}</text>`;
+  for(let k=0;k<=4;k++){const t=t0+(t1-t0)*k/4;g+=`<text x="${X(t)}" y="${H-8}" text-anchor="middle" font-size="11" style="fill:var(--mut)">${new Date(t).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}</text>`}
+  const lines=cs.map(([id],i)=>`<polyline fill="none" stroke-width="2.5" stroke-linejoin="round" stroke="${COL[i%6]}" points="${pts[id].map(p=>X(p[0]).toFixed(1)+','+Y(p[1]).toFixed(1)).join(' ')}"/>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">${g}${lines}</svg><div class="lg">${cs.map(([id,c],i)=>`<span><i style="background:${COL[i%6]}"></i>No ${esc(c.no)} ${pname(c)} (${cnt[id]})</span>`).join('')}</div>`;
+}
 function liveTab(){
-  const vs=Object.values(S.voters),done=vs.filter(v=>v.voted).length,t=tally(),total=Object.keys(S.votes).length,mx=Math.max(1,...Object.values(t));
-  const cs=Object.entries(S.candidates).sort((a,b)=>a[1].no-b[1].no);
+  const vs=Object.values(S.voters),done=vs.filter(v=>v.voted).length,t=tally(),total=Object.keys(S.votes).length,mx=Math.max(1,...Object.values(t)),cs=sorted();
   return `<div class="stats card"><div class="stat"><span class="mut">Terdaftar</span><b>${vs.length}</b></div><div class="stat"><span class="mut">Sudah memilih</span><b>${done}</b></div><div class="stat"><span class="mut">Belum memilih</span><b>${vs.length-done}</b></div><div class="stat"><span class="mut">Partisipasi</span><b>${vs.length?Math.round(done/vs.length*100):0}%</b></div></div>
-  <div class="card"><h2>Perolehan suara (live)</h2>${cs.map(([id,c])=>{const n=t[id]||0;return `<div style="margin-bottom:12px"><div class="row" style="flex-wrap:nowrap"><b style="flex:1">No ${esc(c.no)} – ${esc(c.name)}</b><b style="flex:0 0 auto">${n} suara (${total?Math.round(n/total*100):0}%)</b></div><div class="bar"><i style="width:${n/mx*100}%"></i></div></div>`}).join('')||'<span class="mut">Belum ada kandidat.</span>'}</div>
+  <div class="card"><h2>Perolehan suara (live)</h2>${cs.map(([id,c],i)=>{const n=t[id]||0;return `<div class="cl" style="margin-bottom:16px">${img(c,'thumb')}<div style="flex:1;min-width:0"><div class="row" style="flex-wrap:nowrap"><b style="flex:1;color:${COL[i%6]}">Paslon No ${esc(c.no)}</b><b style="flex:0 0 auto">${n} suara (${total?Math.round(n/total*100):0}%)</b></div><div class="mut">Ketua: <b>${esc(c.name)}</b>${c.wakil?' · Wakil: <b>'+esc(c.wakil)+'</b>':''}</div><div class="bar" style="margin-top:6px"><i style="width:${n/mx*100}%;background:${COL[i%6]}"></i></div></div></div>`}).join('')||'<span class="mut">Belum ada kandidat.</span>'}</div>
+  <div class="card"><h2>Kurva perolehan suara (kumulatif)</h2>${chart(cs)}</div>
   <div class="card"><h2>Partisipasi per kelas</h2><div class="tw"><table><tr><th>Kelompok</th><th class="c">Terdaftar</th><th class="c">Memilih</th><th class="c">%</th></tr>${GROUPS.map(g=>{const a=vs.filter(v=>v.group===g),d=a.filter(v=>v.voted).length;return `<tr><td>${g}</td><td class="c">${a.length}</td><td class="c">${d}</td><td class="c">${a.length?Math.round(d/a.length*100):0}%</td></tr>`}).join('')}</table></div></div>`;
 }
 function votersTab(){
   const ql=q.toLowerCase(),all=Object.entries(S.voters).filter(([id,v])=>!ql||id.toLowerCase().includes(ql)||String(v.name).toLowerCase().includes(ql)||String(v.group).toLowerCase()===ql);
-  return `<div class="card"><h2>Tambah pemilih yang belum terdaftar</h2><div class="row"><input id="vid" placeholder="NISN / ID"><input id="vnm" placeholder="Nama lengkap"><select id="vg">${GROUPS.map(g=>`<option>${g}</option>`).join('')}</select><button class="p" onclick="addVoter()">Tambah</button></div></div>
-  <div class="card"><h2>Impor banyak sekaligus</h2><p class="mut">Satu baris per orang: NISN, Nama, Kelas (contoh: 0012345678, Budi Santoso, 7A). Bisa tempel dari Excel.</p><textarea id="bulk" rows="4"></textarea><div style="margin-top:8px"><button class="p" onclick="bulkAdd()">Impor</button></div></div>
+  return `<div class="card"><h2>Impor dari Excel</h2><p class="mut">Kolom: <b>NISN/ID, Nama, Kelas</b> (baris pertama boleh berupa judul). Format kolom NISN sebagai Teks agar angka 0 di depan tidak hilang. Kelas ditulis 7A, 8B, 9C, Guru, atau Karyawan.</p><div class="row"><input id="xf" type="file" accept=".xlsx,.xls,.csv"><button class="p" onclick="importExcel()">Impor file</button><button onclick="template()">Unduh template</button></div></div>
+  <div class="card"><h2>Tambah pemilih yang belum terdaftar</h2><div class="row"><input id="vid" placeholder="NISN / ID"><input id="vnm" placeholder="Nama lengkap"><select id="vg">${GROUPS.map(g=>`<option>${g}</option>`).join('')}</select><button class="p" onclick="addVoter()">Tambah</button></div></div>
+  <div class="card"><h2>Tempel banyak sekaligus</h2><p class="mut">Satu baris per orang: NISN, Nama, Kelas.</p><textarea id="bulk" rows="3"></textarea><div style="margin-top:8px"><button onclick="bulkAdd()">Impor teks</button></div></div>
   <div class="card"><h2>Daftar pemilih (${all.length})</h2><input id="qs" placeholder="Cari NISN, nama, atau kelas" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._t);window._t=setTimeout(()=>render(true),250)" style="margin-bottom:10px"><div class="tw"><table><tr><th>ID</th><th>Nama</th><th>Kelas</th><th>Status</th><th></th></tr>${all.slice(0,80).map(([id,v])=>`<tr><td>${esc(id)}</td><td>${esc(v.name)}</td><td>${esc(v.group)}</td><td>${v.voted?'<span class="ok">Sudah</span>':'<span class="mut">Belum</span>'}</td><td>${v.voted?'':`<button class="d" onclick="delDoc('voters','${esc(id)}')">Hapus</button>`}</td></tr>`).join('')}</table></div>${all.length>80?'<p class="mut">Menampilkan 80 pertama, gunakan pencarian.</p>':''}</div>`;
 }
 function candsTab(){
-  const cs=Object.entries(S.candidates).sort((a,b)=>a[1].no-b[1].no);
-  return `<div class="card"><h2>Tambah kandidat</h2><div class="row"><input id="cno" inputmode="numeric" placeholder="No urut"><input id="cnm" placeholder="Nama kandidat"></div><div class="row" style="margin-top:8px"><input id="cvs" placeholder="Visi singkat (opsional)"><button class="p" onclick="addCand()">Simpan</button></div></div>
-  <div class="card"><h2>Kandidat (${cs.length})</h2>${cs.map(([id,c])=>`<div class="row" style="flex-wrap:nowrap;padding:6px 0"><span style="flex:1"><b>No ${esc(c.no)}</b> – ${esc(c.name)}</span><button class="d" onclick="delDoc('candidates','${esc(id)}')">Hapus</button></div>`).join('')||'<span class="mut">Belum ada.</span>'}</div>`;
+  const cs=sorted();
+  return `<div class="card"><h2>${CD.id?'Ubah paslon No '+esc(CD.no):'Tambah paslon'}</h2>
+  <div class="row"><input placeholder="No urut" inputmode="numeric" value="${esc(CD.no)}" oninput="CD.no=this.value" ${CD.id?'disabled':''}></div>
+  <div class="row" style="margin-top:8px"><input placeholder="Calon Ketua OSIS" value="${esc(CD.name)}" oninput="CD.name=this.value"><input placeholder="Calon Wakil Ketua OSIS" value="${esc(CD.wakil)}" oninput="CD.wakil=this.value"></div>
+  <div style="margin-top:8px"><input placeholder="Visi singkat (opsional)" value="${esc(CD.vision)}" oninput="CD.vision=this.value"></div>
+  <div class="cl" style="margin-top:10px">${CD.photo?`<img class="thumb" src="${esc(CD.photo)}" alt="">`:'<div class="thumb ph">Foto</div>'}<div style="flex:1"><div class="mut" style="margin-bottom:4px">Foto paslon (JPG/PNG, otomatis diperkecil)</div><input type="file" accept="image/*" onchange="pickPhoto(this)"></div></div>
+  <div class="row" style="margin-top:12px"><button class="p" onclick="addCand()">Simpan paslon</button>${CD.id||CD.no||CD.name?'<button onclick="cancelCD()">Batal / kosongkan</button>':''}</div></div>
+  <div class="card"><h2>Daftar paslon (${cs.length})</h2>${cs.map(([id,c])=>`<div class="cl" style="padding:8px 0;border-bottom:1px solid var(--bd)">${img(c,'thumb')}<div style="flex:1;min-width:0"><b>No ${esc(c.no)}</b><div>Ketua: ${esc(c.name)}</div><div>Wakil: ${esc(c.wakil||'-')}</div></div><button onclick="editCand('${esc(id)}')">Ubah</button><button class="d" onclick="delDoc('candidates','${esc(id)}')">Hapus</button></div>`).join('')||'<span class="mut">Belum ada paslon.</span>'}</div>`;
 }
 function ctrlTab(){
   return `<div class="card"><h2>Kontrol pemilihan</h2><p class="mut">Pemilih hanya bisa masuk dan mengirim suara saat pemilihan dibuka.</p><div class="row"><button class="p" ${S.open?'disabled':''} onclick="setOpen(true)">Buka pemilihan</button><button ${S.open?'':'disabled'} onclick="setOpen(false)">Tutup pemilihan</button><button onclick="exportCsv()">Unduh rekap CSV</button></div></div>
   <div class="card"><h2>Reset</h2><p class="mut">Menghapus semua suara dan status memilih. Gunakan hanya untuk uji coba sebelum hari-H.</p><button class="d" onclick="resetAll()">${armed?'Klik lagi untuk konfirmasi reset':'Reset semua suara'}</button></div>`;
 }
 
-Object.assign(window,{doLogin,submitVote,adminLogin,logout,addVoter,bulkAdd,addCand,setOpen,delDoc,resetAll,exportCsv,tog,render,
+Object.assign(window,{doLogin,submitVote,adminLogin,logout,addVoter,bulkAdd,addCand,setOpen,delDoc,resetAll,exportCsv,tog,render,CD,importExcel,template,pickPhoto,editCand,cancelCD,
   pick:id=>{V.sel=id;render(true)},cancelV:()=>{V={stage:'login'};render(true)}});
 Object.defineProperties(window,{
   view:{get:()=>view,set:v=>{view=v},configurable:true},

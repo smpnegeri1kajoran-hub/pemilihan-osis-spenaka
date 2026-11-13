@@ -209,7 +209,7 @@ function render(force){
   const a=document.activeElement;
   if(!force&&a&&$('app').contains(a)&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;
   if(!configured){$('app').innerHTML='<div class="card"><h2>Belum dikonfigurasi</h2><p>Isi konfigurasi Firebase di <code>index.html</code> (lihat README.md).</p></div>';return}
-  const open=S.open?'<span class="chip on">Pemilihan DIBUKA</span>':'<span class="chip off">Pemilihan DITUTUP</span>';
+  const open=S.open?'<span class="chip on">PEMILIHAN DIBUKA</span>':'<span class="chip off">PEMILIHAN DITUTUP</span>';
   const A=MODE==='admin',btn=A&&admin?`<button onclick="logout()">Keluar</button>`:'';
   const head=A?`<header><h1>Panel Admin – Pemilihan OSIS</h1><div class="row" style="flex:0 1 auto">${open}${btn}</div></header>`
     :`<header class="hd"><div class="logos"><img class="logo" src="logo.png" alt="Logo SMP Negeri 1 Kajoran" onerror="this.remove()"><img class="logo" src="kpu-osis.png" alt="Logo KPU OSIS" onerror="this.remove()"></div><h1>Pemilihan Ketua OSIS dan Wakil Ketua OSIS</h1><div class="sch">SMP Negeri 1 Kajoran</div>${V.stage==='login'?`<div>${open}</div>`:''}</header>`;

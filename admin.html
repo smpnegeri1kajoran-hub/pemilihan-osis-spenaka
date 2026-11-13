@@ -31,7 +31,7 @@ button.d{color:var(--err)}button:disabled{opacity:.4;cursor:not-allowed}
 .bar{height:22px;border-radius:8px;background:var(--bg);border:1px solid var(--bd);overflow:hidden}.bar i{display:block;height:100%;background:var(--pri)}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.stat b{display:block;font-size:1.8rem}
 .tw{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.92rem}td,th{padding:7px 8px;border-bottom:1px solid var(--bd);text-align:left}
-.photo{display:block;width:100%;height:auto;max-height:52vh;object-fit:contain;border-radius:10px;margin-bottom:10px;background:var(--bg)}.photo.ph{min-height:180px;max-height:none}.thumb{width:76px;height:76px;object-fit:cover;border-radius:10px;flex:0 0 auto;background:var(--bg)}.ph{display:flex;align-items:center;justify-content:center;color:var(--mut);font-weight:700;border:1px dashed var(--bd)}.cl{display:flex;gap:14px;align-items:center}.lg{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px;font-size:.88rem}.lg i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}.two .card{margin:0}@media(max-width:760px){.two{grid-template-columns:1fr}}.hd{flex-direction:column;justify-content:center;text-align:center;gap:6px;margin-bottom:20px}.hd h1{font-size:1.6rem;text-wrap:balance}.logos{display:flex;justify-content:center;align-items:center;gap:22px}.logo{height:92px;width:auto;max-width:44%;object-fit:contain}.sch{color:var(--mut);font-size:1.05rem;font-weight:600;letter-spacing:.02em}.vm .w{max-width:680px;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;justify-content:center}.vm.ballot .w{max-width:960px}.lc{text-align:center}.pg{display:grid;gap:14px;margin:0 auto;width:100%}.pg.c1{grid-template-columns:1fr}.pg.c2{grid-template-columns:repeat(2,1fr)}.pg.c3{grid-template-columns:repeat(3,1fr)}@media(max-width:600px){.pg{grid-template-columns:1fr!important;max-width:none!important}}.fsbtn{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);right:10px;z-index:5;min-height:36px;padding:6px 12px;font-size:.85rem;opacity:.9}body.fs .fsbtn{display:none}.c{text-align:center}.big{font-size:1.1rem}
+.photo{display:block;width:100%;height:auto;max-height:52vh;object-fit:contain;border-radius:10px;margin-bottom:10px;background:var(--bg)}.photo.ph{min-height:180px;max-height:none}.thumb{width:76px;height:76px;object-fit:cover;border-radius:10px;flex:0 0 auto;background:var(--bg)}.ph{display:flex;align-items:center;justify-content:center;color:var(--mut);font-weight:700;border:1px dashed var(--bd)}.cl{display:flex;gap:14px;align-items:center}.lg{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px;font-size:.88rem}.lg i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}.two .card{margin:0;display:flex;flex-direction:column}.lst{display:flex;flex-direction:column;justify-content:space-around;gap:14px;flex:1}.vn{text-align:right;flex:0 0 auto}.vn b{display:block;font-size:2rem;line-height:1}.chip.sr{color:#e08a00;border-color:#e08a00}.pm .w{max-width:1200px}.pres{min-height:92vh;display:flex;flex-direction:column;justify-content:center;gap:12px;text-align:center}.pres .photo{max-height:34vh}.pc{text-align:center;margin:0}.pnum{font-size:clamp(2.6rem,7vw,5rem);font-weight:800;line-height:1}.xbtn{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);right:10px;z-index:5;min-height:36px;padding:6px 12px;font-size:.85rem;opacity:.7}@media(max-width:760px){.two{grid-template-columns:1fr}}.hd{flex-direction:column;justify-content:center;text-align:center;gap:6px;margin-bottom:20px}.hd h1{font-size:1.6rem;text-wrap:balance}.logos{display:flex;justify-content:center;align-items:center;gap:22px}.logo{height:92px;width:auto;max-width:44%;object-fit:contain}.sch{color:var(--mut);font-size:1.05rem;font-weight:600;letter-spacing:.02em}.vm .w{max-width:680px;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;justify-content:center}.vm.ballot .w{max-width:960px}.lc{text-align:center}.pg{display:grid;gap:14px;margin:0 auto;width:100%}.pg.c1{grid-template-columns:1fr}.pg.c2{grid-template-columns:repeat(2,1fr)}.pg.c3{grid-template-columns:repeat(3,1fr)}@media(max-width:600px){.pg{grid-template-columns:1fr!important;max-width:none!important}}.fsbtn{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);right:10px;z-index:5;min-height:36px;padding:6px 12px;font-size:.85rem;opacity:.9}body.fs .fsbtn{display:none}.c{text-align:center}.big{font-size:1.1rem}
 </style>
 </head>
 <body>
@@ -61,6 +61,7 @@ if(MODE==='vote'&&fsOk){
   ['pointerdown','pointerup','keydown'].forEach(ev=>document.addEventListener(ev,()=>{if(!isFs())goFull()},true));
   document.addEventListener('fullscreenchange',syncFs);document.addEventListener('webkitfullscreenchange',syncFs);syncFs();
 }
+let hide=false,present=false;try{hide=localStorage.getItem('osis_hide')==='1'}catch(e){}
 const GROUPS=[];['7','8','9'].forEach(g=>'ABCDEFG'.split('').forEach(c=>GROUPS.push(g+c)));GROUPS.push('Guru','Karyawan');
 const S={voters:{},candidates:{},votes:{},open:false,ready:false};
 const CD={},COL=['#2457d6','#e08a00','#12a37f','#c0392b','#8e44ad','#16a2b8'];
@@ -219,7 +220,10 @@ function render(force){
   if(!force&&a&&$('app').contains(a)&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;
   if(!configured){$('app').innerHTML='<div class="card"><h2>Belum dikonfigurasi</h2><p>Isi konfigurasi Firebase di <code>index.html</code> (lihat README.md).</p></div>';return}
   const open=S.open?'<span class="chip on">Pemilihan DIBUKA</span>':'<span class="chip off">Pemilihan DITUTUP</span>';
-  const A=MODE==='admin',btn=A&&admin?`<button onclick="logout()">Keluar</button>`:'';
+  const A=MODE==='admin',btn='';
+  if(present&&S.open)present=false;
+  const pm=A&&admin&&present;document.body.classList.toggle('pm',pm);
+  if(pm){$('app').innerHTML=presentView();return}
   const head=A?`<header><h1>Panel Admin – Pemilihan OSIS</h1><div class="row" style="flex:0 1 auto">${open}${btn}</div></header>`
     :`<header class="hd">${fsOk?'<button class="fsbtn" onclick="goFull()">⛶ Layar penuh</button>':''}<div class="logos"><img class="logo" src="logo.png" alt="Logo SMP Negeri 1 Kajoran" onerror="this.remove()"><img class="logo" src="kpu-osis.png" alt="Logo KPU OSIS" onerror="this.remove()"></div><h1>Pemilihan Ketua OSIS dan Wakil Ketua OSIS</h1><div class="sch">SMP Negeri 1 Kajoran</div>${V.stage==='login'?`<div>${open}</div>`:''}</header>`;
   document.body.classList.toggle('vm',MODE==='vote');document.body.classList.toggle('ballot',MODE==='vote'&&V.stage==='ballot');
@@ -243,7 +247,7 @@ function voteView(){
 }
 function adminView(){
   const T=[['live','Live'],['voters','Pemilih'],['cands','Kandidat'],['ctrl','Kontrol']];
-  return `<div class="tabs">${T.map(t=>`<button class="${tab===t[0]?'a':''}" onclick="tab='${t[0]}';note='';render(true)">${t[1]}</button>`).join('')}</div>`
+  return `<div class="tabs">${T.map(t=>`<button class="${tab===t[0]?'a':''}" onclick="tab='${t[0]}';note='';render(true)">${t[1]}</button>`).join('')}<button class="d" style="margin-left:auto" onclick="logout()">Keluar</button></div>`
    +(note?`<p class="ok">${esc(note)}</p>`:'')+({live:liveTab,voters:votersTab,cands:candsTab,ctrl:ctrlTab}[tab])();
 }
 const sorted=()=>Object.entries(S.candidates).sort((a,b)=>a[1].no-b[1].no);
@@ -257,14 +261,33 @@ function bars(cs,t){
   for(let v=0;v<=top;v+=st)g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" style="stroke:var(--bd)"/><text x="${L-6}" y="${Y(v)+4}" text-anchor="end" font-size="11" style="fill:var(--mut)">${v}</text>`;
   const bar=cs.map(([id,c],i)=>{const v=t[id]||0,x=L+sl*i+(sl-bw)/2,y=Y(v);
     return `<rect x="${x}" y="${y}" width="${bw}" height="${H-B-y}" rx="6" fill="${COL[i%6]}"/><text x="${x+bw/2}" y="${y-15}" text-anchor="middle" font-size="14" font-weight="700" style="fill:var(--tx)">${v}</text><text x="${x+bw/2}" y="${y-3}" text-anchor="middle" font-size="11" style="fill:var(--mut)">${total?Math.round(v/total*100):0}%</text><text x="${x+bw/2}" y="${H-12}" text-anchor="middle" font-size="12" style="fill:var(--tx)">No ${esc(c.no)}</text>`}).join('');
-  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">${g}${bar}</svg><div class="lg">${cs.map(([id,c],i)=>`<span><i style="background:${COL[i%6]}"></i>No ${esc(c.no)} ${pname(c)}</span>`).join('')}</div>`;
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">${g}${bar}</svg>`;
 }
+const tc=i=>`color-mix(in srgb,${COL[i%6]} 62%,var(--tx))`;
+function leadTag(cs,t){
+  const m=Math.max(0,...cs.map(([id])=>t[id]||0)),k=cs.filter(([id])=>m>0&&(t[id]||0)===m).length;
+  return id=>{const n=t[id]||0;if(!m||n!==m)return '';return k>1?'<span class="chip sr">Seri</span>':'<span class="chip on">Unggul</span>'};
+}
+function toggleHide(){hide=!hide;try{localStorage.setItem('osis_hide',hide?'1':'0')}catch(e){}render(true)}
+function startPresent(){if(S.open)return;present=true;goFull();render(true)}
+function stopPresent(){present=false;try{const f=document.exitFullscreen||document.webkitExitFullscreen;if(f&&isFs()){const r=f.call(document);if(r&&r.catch)r.catch(()=>{})}}catch(e){}render(true)}
 function liveTab(){
-  const vs=Object.values(S.voters),done=vs.filter(v=>v.voted).length,t=tally(),total=Object.keys(S.votes).length,mx=Math.max(1,...Object.values(t)),cs=sorted();
+  const vs=Object.values(S.voters),done=vs.filter(v=>v.voted).length,t=tally(),total=Object.keys(S.votes).length,cs=sorted(),tag=leadTag(cs,t);
+  const results=hide?`<div class="card c"><h2>Hasil disembunyikan</h2><p class="mut">Perolehan suara tidak ditampilkan di layar ini. Tekan "Tampilkan hasil" untuk melihatnya.</p></div>`
+  :`<div class="two"><div class="card"><h2>Perolehan suara (live)</h2><p class="mut" style="margin:-4px 0 12px">Persentase dihitung dari ${total} suara yang sudah masuk.</p><div class="lst">${cs.map(([id,c],i)=>{const n=t[id]||0;return `<div class="cl">${img(c,'thumb')}<div style="flex:1;min-width:0"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="color:${tc(i)}">Paslon No ${esc(c.no)}</b>${tag(id)}</div><div class="mut">Ketua: <b>${esc(c.name)}</b>${c.wakil?'<br>Wakil: <b>'+esc(c.wakil)+'</b>':''}</div></div><div class="vn"><b>${n}</b><span class="mut">suara · ${total?Math.round(n/total*100):0}%</span></div></div>`}).join('')||'<span class="mut">Belum ada kandidat.</span>'}</div></div><div class="card"><h2>Diagram batang suara</h2>${bars(cs,t)}</div></div>`;
   return `<div class="stats card"><div class="stat"><span class="mut">Terdaftar</span><b>${vs.length}</b></div><div class="stat"><span class="mut">Sudah memilih</span><b>${done}</b></div><div class="stat"><span class="mut">Belum memilih</span><b>${vs.length-done}</b></div><div class="stat"><span class="mut">Partisipasi</span><b>${vs.length?Math.round(done/vs.length*100):0}%</b></div></div>
-  <div class="two"><div class="card"><h2>Perolehan suara (live)</h2>${cs.map(([id,c],i)=>{const n=t[id]||0;return `<div class="cl" style="margin-bottom:16px">${img(c,'thumb')}<div style="flex:1;min-width:0"><div class="row" style="flex-wrap:nowrap"><b style="flex:1;color:${COL[i%6]}">Paslon No ${esc(c.no)}</b><b style="flex:0 0 auto">${n} suara (${total?Math.round(n/total*100):0}%)</b></div><div class="mut">Ketua: <b>${esc(c.name)}</b>${c.wakil?' · Wakil: <b>'+esc(c.wakil)+'</b>':''}</div><div class="bar" style="margin-top:6px"><i style="width:${n/mx*100}%;background:${COL[i%6]}"></i></div></div></div>`}).join('')||'<span class="mut">Belum ada kandidat.</span>'}</div>
-  <div class="card"><h2>Diagram batang suara</h2>${bars(cs,t)}</div></div>
+  <div class="row" style="justify-content:flex-end;margin-bottom:14px"><button onclick="toggleHide()">${hide?'Tampilkan hasil':'Sembunyikan hasil'}</button><button class="p" ${S.open?'disabled':''} onclick="startPresent()">Mode layar tayang</button></div>
+  ${S.open?'<p class="mut" style="text-align:right;margin:-6px 0 14px">Mode layar tayang baru bisa dibuka setelah pemilihan ditutup.</p>':''}
+  ${results}
   <div class="card"><h2>Partisipasi per kelas</h2><div class="tw"><table><tr><th>Kelompok</th><th class="c">Terdaftar</th><th class="c">Memilih</th><th class="c">%</th></tr>${GROUPS.map(g=>{const a=vs.filter(v=>v.group===g),d=a.filter(v=>v.voted).length;return `<tr><td>${g}</td><td class="c">${a.length}</td><td class="c">${d}</td><td class="c">${a.length?Math.round(d/a.length*100):0}%</td></tr>`}).join('')}</table></div></div>`;
+}
+function presentView(){
+  const cs=sorted(),t=tally(),total=Object.keys(S.votes).length,vs=Object.values(S.voters),done=vs.filter(v=>v.voted).length,tag=leadTag(cs,t),cols=cs.length<=3?Math.max(cs.length,1):cs.length===4?2:3;
+  return `<button class="xbtn" onclick="stopPresent()">✕ Keluar layar tayang</button>
+  <div class="pres"><div class="logos"><img class="logo" src="logo.png" alt="" onerror="this.remove()"><img class="logo" src="kpu-osis.png" alt="" onerror="this.remove()"></div>
+  <h1 style="font-size:clamp(1.4rem,3.4vw,2.4rem);margin:0">Hasil Pemilihan Ketua OSIS dan Wakil Ketua OSIS</h1><div class="sch">SMP Negeri 1 Kajoran</div>
+  <div class="pg c${cols}" style="margin-top:8px">${cs.map(([id,c],i)=>{const n=t[id]||0,pc=total?Math.round(n/total*100):0;return `<div class="card pc" style="border-color:${COL[i%6]};border-width:2px">${img(c,'photo')}<div class="big" style="color:${tc(i)};font-weight:700">Paslon No ${esc(c.no)} ${tag(id)}</div><div><b>${esc(c.name)}</b>${c.wakil?'<br><b>'+esc(c.wakil)+'</b>':''}</div><div class="pnum" style="margin-top:8px">${n}</div><div class="mut" style="margin-bottom:8px">suara · ${pc}%</div><div class="bar"><i style="width:${pc}%;background:${COL[i%6]}"></i></div></div>`}).join('')}</div>
+  <p class="mut">Total ${total} suara masuk dari ${vs.length} pemilih terdaftar (partisipasi ${vs.length?Math.round(done/vs.length*100):0}%)</p></div>`;
 }
 function votersTab(){
   const ql=q.toLowerCase(),all=Object.entries(S.voters).filter(([id,v])=>!ql||id.toLowerCase().includes(ql)||String(v.name).toLowerCase().includes(ql)||String(v.group).toLowerCase()===ql);
@@ -288,7 +311,7 @@ function ctrlTab(){
   <div class="card"><h2>Reset</h2><p class="mut">Menghapus semua suara dan status memilih. Gunakan hanya untuk uji coba sebelum hari-H.</p><button class="d" onclick="resetAll()">${armed?'Klik lagi untuk konfirmasi reset':'Reset semua suara'}</button></div>`;
 }
 
-Object.assign(window,{doLogin,submitVote,adminLogin,logout,addVoter,bulkAdd,addCand,setOpen,delDoc,resetAll,exportCsv,tog,render,goFull,CD,importExcel,template,pickPhoto,editCand,cancelCD,
+Object.assign(window,{doLogin,submitVote,adminLogin,logout,addVoter,bulkAdd,addCand,setOpen,delDoc,resetAll,exportCsv,tog,render,goFull,toggleHide,startPresent,stopPresent,CD,importExcel,template,pickPhoto,editCand,cancelCD,
   pick:id=>{V.sel=id;render(true)},cancelV:()=>{V={stage:'login'};render(true)}});
 Object.defineProperties(window,{
   view:{get:()=>view,set:v=>{view=v},configurable:true},

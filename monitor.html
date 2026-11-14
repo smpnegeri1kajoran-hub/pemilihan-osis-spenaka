@@ -62,6 +62,8 @@ if((MODE==='vote'||MODE==='monitor')&&fsOk){
   document.addEventListener('fullscreenchange',syncFs);document.addEventListener('webkitfullscreenchange',syncFs);syncFs();
 }
 let hide=false,present=false;try{hide=localStorage.getItem('osis_hide')==='1'}catch(e){}
+const KAT={putra:{t:'Siswa Laki-laki',c:'#2f6fe4'},putri:{t:'Siswa Perempuan',c:'#d6458a'},guru:{t:'Guru',c:'#12a37f'},karyawan:{t:'Karyawan',c:'#e08a00'},siswa:{t:'Siswa',c:'#7a86a6'}};
+const katOf=(g,jk)=>g==='Guru'?'guru':g==='Karyawan'?'karyawan':jk==='P'?'putri':jk==='L'?'putra':'siswa';
 const GROUPS=[];['7','8','9'].forEach(g=>'ABCDEFG'.split('').forEach(c=>GROUPS.push(g+c)));GROUPS.push('Guru','Karyawan');
 const S={voters:{},candidates:{},votes:{},active:{},open:false,ready:false};
 const CD={},COL=['#2457d6','#e08a00','#12a37f','#c0392b','#8e44ad','#16a2b8'];
@@ -76,7 +78,7 @@ const BILIK=(new URLSearchParams(location.search).get('bilik')||'').replace(/[^\
 let STN=BILIK?'b'+BILIK:null;
 if(!STN){try{STN=localStorage.getItem('osis_stn')}catch(e){}if(!STN){STN='d'+Math.random().toString(36).slice(2,9);try{localStorage.setItem('osis_stn',STN)}catch(e){}}}
 let hb=null,PA=null,pq=Promise.resolve();
-const first=()=>setDoc(doc(db,'active',STN),{name:PA.name,group:PA.group,bilik:BILIK,s:serverTimestamp(),t:serverTimestamp()});
+const first=()=>setDoc(doc(db,'active',STN),{name:PA.name,group:PA.group,bilik:BILIK,kat:PA.kat,s:serverTimestamp(),t:serverTimestamp()});
 const beat=()=>updateDoc(doc(db,'active',STN),{t:serverTimestamp()});
 async function pres(on){
   if(MODE!=='vote'||!db)return;
@@ -125,7 +127,7 @@ async function doLogin(){
     if(!s.exists())return m('Nomor tidak terdaftar. Silakan lapor ke panitia.');
     const v=s.data();
     if(v.voted)return m('Nomor ini sudah menggunakan hak pilih.');
-    V={stage:'ballot',id,name:v.name,group:v.group,sel:null};PA={name:v.name||'',group:v.group||''};presence(true);render(true);
+    V={stage:'ballot',id,name:v.name,group:v.group,sel:null};PA={name:v.name||'',group:v.group||'',kat:katOf(v.group,v.jk)};presence(true);render(true);
   }catch(e){m('Gagal memeriksa data. Periksa koneksi internet.')}
 }
 async function submitVote(){

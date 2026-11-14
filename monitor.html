@@ -94,7 +94,7 @@ if(configured){
       if(MODE==='vote')presence(false);
       if(MODE==='monitor')onSnapshot(collection(db,'active'),s=>{const o={};s.forEach(x=>o[x.id]=x.data());S.active=o;render(true)},()=>{});
       onSnapshot(collection(db,'candidates'),s=>{const o={};s.forEach(x=>o[x.id]=x.data());S.candidates=o;render()},()=>{});
-      onSnapshot(doc(db,'settings','election'),s=>{const x=s.data();S.open=!!(x&&x.open);render()},()=>{});
+      onSnapshot(doc(db,'settings','election'),s=>{const x=s.data();S.open=!!(x&&x.open);if(MODE==='vote'&&!S.open&&V.stage==='ballot'){V={stage:'login',msg:'Pemilihan telah ditutup oleh panitia.'};presence(false)}render(true)},()=>{});
     }
     if(u.isAnonymous){admin=false;stopAdmin()}
     else if(MODE==='vote'||MODE==='monitor'){await signOut(auth);return}
@@ -137,7 +137,12 @@ async function submitVote(){
     b.update(doc(db,'voters',V.id),{voted:true,at:Date.now()});
     await b.commit();
     V={stage:'done'};render(true);setTimeout(()=>{V={stage:'login'};render(true);presence(false)},6000);
-  }catch(e){V.busy=false;V.msg='Suara gagal disimpan (mungkin nomor ini sudah memilih atau pemilihan ditutup). Hubungi panitia.';render(true)}
+  }catch(e){
+    console.error('Gagal menyimpan suara:',e);
+    let why='';
+    try{const v=await getDoc(doc(db,'voters',V.id));if(v.exists()&&v.data().voted)why='Nomor ini sudah tercatat memilih.'}catch(x){}
+    if(!why)why=!S.open?'Pemilihan sudah ditutup oleh panitia.':e&&e.code==='permission-denied'?'Ditolak oleh aturan keamanan database (Rules).':e&&e.code==='unavailable'?'Koneksi internet bermasalah.':'Suara belum tersimpan.';
+    V.busy=false;V.msg=why+' Hubungi panitia. (kode: '+(e&&e.code||'tidak diketahui')+')';render(true)}
 }
 
 /* ---------- admin ---------- */
@@ -147,23 +152,27 @@ async function adminLogin(){
 }
 async function logout(){await signOut(auth)}
 async function addVoter(){
-  const id=clean($('vid').value),nm=$('vnm').value.trim(),g=$('vg').value;
+  const id=clean($('vid').value),nm=$('vnm').value.trim(),g=$('vg').value,jk=$('vjk').value;
   if(!id||!nm){note='ID/NISN dan nama wajib diisi.';return render(true)}
   if(S.voters[id]){note='ID '+id+' sudah ada di daftar.';return render(true)}
-  await setDoc(doc(db,'voters',id),{name:nm,group:g,voted:false});note='Pemilih '+nm+' ditambahkan.';render(true);
+  await setDoc(doc(db,'voters',id),{name:nm,group:g,voted:false,jk});note='Pemilih '+nm+' ditambahkan.';render(true);
 }
 const normGroup=g=>{let x=String(g||'').toUpperCase().replace(/KELAS|\s|-|\./g,'').replace(/^VIII/,'8').replace(/^VII/,'7').replace(/^IX/,'9');return GROUPS.find(k=>k.toUpperCase()===x)||String(g||'').trim()||'-'};
+const normJk=v=>{const x=String(v||'').trim().toLowerCase();return /^(l|lk|laki|laki-laki|laki laki|pria|m|male)$/.test(x)?'L':/^(p|pr|perempuan|wanita|putri|f|female)$/.test(x)?'P':''};
 async function importRows(rows){
-  let n=0,skip=0,b=writeBatch(db),c=0;const seen={};
+  let n=0,skip=0,upd=0,b=writeBatch(db),c=0;const seen={};
   for(const r of rows){
-    const id=clean(r[0]),nm=String(r[1]||'').trim();
-    if(!id||!nm||S.voters[id]||seen[id]){skip++;continue}
-    seen[id]=1;b.set(doc(db,'voters',id),{name:nm,group:normGroup(r[2]),voted:false});n++;c++;
+    const id=clean(r[0]),nm=String(r[1]||'').trim(),jk=normJk(r[3]);
+    if(!id||!nm||seen[id]){skip++;continue}
+    seen[id]=1;const ex=S.voters[id];
+    if(ex){if(jk&&ex.jk!==jk){b.update(doc(db,'voters',id),{jk});upd++;c++}else skip++}
+    else{b.set(doc(db,'voters',id),{name:nm,group:normGroup(r[2]),voted:false,jk});n++;c++}
     if(c>=400){await b.commit();b=writeBatch(db);c=0}
   }
   if(c)await b.commit();
-  note=n+' pemilih berhasil ditambahkan, '+skip+' dilewati (duplikat/kosong).';render(true);
+  note=n+' pemilih ditambahkan, '+upd+' data JK diperbarui, '+skip+' dilewati (duplikat/kosong).';render(true);
 }
+async function setJk(id,v){try{await updateDoc(doc(db,'voters',id),{jk:v})}catch(e){note='Gagal menyimpan JK.';render(true)}}
 async function bulkAdd(){
   await importRows($('bulk').value.split('\n').map(l=>l.split(/[,;\t]/).map(x=>x.trim())))
 }
@@ -174,16 +183,16 @@ async function importExcel(){
   try{
     const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
     let rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:''}).map(r=>r.map(x=>String(x).trim())).filter(r=>r.some(x=>x));
-    let ci=0,ni=1,gi=2;const h=rows[0]||[],fi=re=>h.findIndex(x=>re.test(x));
+    let ci=0,ni=1,gi=2,ji=3;const h=rows[0]||[],fi=re=>h.findIndex(x=>re.test(x));
     if(h.some(x=>/nisn|nip|nama/i.test(x))){
-      const a=fi(/nisn|nip|^id$|nomor/i),b=fi(/nama/i),c=fi(/kelas|rombel|kelompok/i);
-      if(a>=0)ci=a;if(b>=0)ni=b;if(c>=0)gi=c;rows=rows.slice(1);
+      const a=fi(/nisn|nip|^id$|nomor/i),b=fi(/nama/i),c=fi(/kelas|rombel|kelompok/i),d=fi(/^jk$|jenis|kelamin|gender|^l\/p$/i);
+      if(a>=0)ci=a;if(b>=0)ni=b;if(c>=0)gi=c;if(d>=0)ji=d;rows=rows.slice(1);
     }
-    await importRows(rows.map(r=>[r[ci],r[ni],r[gi]]));
+    await importRows(rows.map(r=>[r[ci],r[ni],r[gi],r[ji]]));
   }catch(e){note='Gagal membaca file. Gunakan format .xlsx, .xls, atau .csv.';render(true)}
 }
 function template(){
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeffNISN,Nama,Kelas\n0012345678,Contoh Siswa,7A\n198001012005011001,Contoh Guru,Guru\n'],{type:'text/csv'}));a.download='template-pemilih.csv';a.click();
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeffNISN,Nama,Kelas,JK\n0012345678,Contoh Siswa,7A,L\n0012345679,Contoh Siswi,7B,P\n198001012005011001,Contoh Guru,Guru,L\n'],{type:'text/csv'}));a.download='template-pemilih.csv';a.click();
 }
 const clearCD=()=>Object.keys(CD).forEach(k=>delete CD[k]);
 async function addCand(){
@@ -250,9 +259,12 @@ function render(force){
 function monitorView(){
   const now=Date.now(),ms=x=>x&&x.toMillis?x.toMillis():now;
   const L=Object.values(S.active).filter(a=>a&&now-ms(a.t)<150000).sort((a,b)=>ms(a.s||a.t)-ms(b.s||b.t)).slice(0,5);
+  const card=a=>{const k=KAT[a.kat]?a.kat:katOf(a.group),K=KAT[k],c=K.c;
+    return `<div class="card mc" style="border-top:6px solid ${c};background:color-mix(in srgb,${c} 10%,var(--card))">${a.bilik?`<div class="mut">Bilik ${esc(a.bilik)}</div>`:''}<div class="mn">${esc(a.name)}</div><div class="mut">${esc(a.group)}</div><span class="chip" style="color:color-mix(in srgb,${c} 62%,var(--tx));border-color:${c}">${K.t}</span><div class="mut" style="font-size:.8rem">Sedang memilih</div></div>`};
   return `<header class="hd">${fsOk?'<button class="fsbtn" onclick="goFull()">⛶ Layar penuh</button>':''}<div class="logos"><img class="logo" src="logo.png" alt="" onerror="this.remove()"><img class="logo" src="kpu-osis.png" alt="" onerror="this.remove()"></div><h1>Pemilih yang Sedang Memilih</h1><div class="sch">SMP Negeri 1 Kajoran</div></header>
-  <div class="mon">${L.map(a=>`<div class="card mc">${a.bilik?`<div class="mut">Bilik ${esc(a.bilik)}</div>`:''}<div class="mn">${esc(a.name)}</div><div class="mut">${esc(a.group)}</div><span class="chip on">Sedang memilih</span></div>`).join('')}</div>
-  ${L.length?'':'<p class="mut c" style="margin-top:18px">Belum ada pemilih yang sedang memilih.</p>'}`;
+  <div class="mon">${L.map(card).join('')}</div>
+  ${L.length?'':'<p class="mut c" style="margin-top:18px">Belum ada pemilih yang sedang memilih.</p>'}
+  <div class="lg" style="justify-content:center;margin-top:24px">${['putra','putri','guru','karyawan'].map(k=>`<span><i style="background:${KAT[k].c}"></i>${KAT[k].t}</span>`).join('')}</div>`;
 }
 if(MODE==='monitor')setInterval(()=>render(true),10000);
 function tog(){view=view==='admin'?'vote':'admin';render(true)}
@@ -316,10 +328,10 @@ function presentView(){
 }
 function votersTab(){
   const ql=q.toLowerCase(),all=Object.entries(S.voters).filter(([id,v])=>!ql||id.toLowerCase().includes(ql)||String(v.name).toLowerCase().includes(ql)||String(v.group).toLowerCase()===ql);
-  return `<div class="card"><h2>Impor dari Excel</h2><p class="mut">Kolom: <b>NISN/ID, Nama, Kelas</b> (baris pertama boleh berupa judul). Format kolom NISN sebagai Teks agar angka 0 di depan tidak hilang. Kelas ditulis 7A, 8B, 9C, Guru, atau Karyawan.</p><div class="row"><input id="xf" type="file" accept=".xlsx,.xls,.csv"><button class="p" onclick="importExcel()">Impor file</button><button onclick="template()">Unduh template</button></div></div>
-  <div class="card"><h2>Tambah pemilih yang belum terdaftar</h2><div class="row"><input id="vid" placeholder="NISN / NIP / ID"><input id="vnm" placeholder="Nama lengkap"><select id="vg">${GROUPS.map(g=>`<option>${g}</option>`).join('')}</select><button class="p" onclick="addVoter()">Tambah</button></div></div>
-  <div class="card"><h2>Tempel banyak sekaligus</h2><p class="mut">Satu baris per orang: NISN, Nama, Kelas.</p><textarea id="bulk" rows="3"></textarea><div style="margin-top:8px"><button onclick="bulkAdd()">Impor teks</button></div></div>
-  <div class="card"><h2>Daftar pemilih (${all.length})</h2><input id="qs" placeholder="Cari NISN, nama, atau kelas" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._t);window._t=setTimeout(()=>render(true),250)" style="margin-bottom:10px"><div class="tw"><table><tr><th>ID</th><th>Nama</th><th>Kelas</th><th>Status</th><th></th></tr>${all.slice(0,80).map(([id,v])=>`<tr><td>${esc(id)}</td><td>${esc(v.name)}</td><td>${esc(v.group)}</td><td>${v.voted?'<span class="ok">Sudah</span>':'<span class="mut">Belum</span>'}</td><td>${v.voted?'':`<button class="d" onclick="delDoc('voters','${esc(id)}')">Hapus</button>`}</td></tr>`).join('')}</table></div>${all.length>80?'<p class="mut">Menampilkan 80 pertama, gunakan pencarian.</p>':''}</div>`;
+  return `<div class="card"><h2>Impor dari Excel</h2><p class="mut">Kolom: <b>NISN/ID, Nama, Kelas, JK (L/P)</b> (baris pertama boleh berupa judul). Format kolom NISN sebagai Teks agar angka 0 di depan tidak hilang. Kelas ditulis 7A, 8B, 9C, Guru, atau Karyawan. Kolom JK diisi L atau P (untuk siswa). Mengimpor ulang file yang berisi JK akan memperbarui JK pemilih yang sudah terdaftar tanpa menghapus datanya.</p><div class="row"><input id="xf" type="file" accept=".xlsx,.xls,.csv"><button class="p" onclick="importExcel()">Impor file</button><button onclick="template()">Unduh template</button></div></div>
+  <div class="card"><h2>Tambah pemilih yang belum terdaftar</h2><div class="row"><input id="vid" placeholder="NISN / NIP / ID"><input id="vnm" placeholder="Nama lengkap"><select id="vg">${GROUPS.map(g=>`<option>${g}</option>`).join('')}</select><select id="vjk"><option value="">JK (opsional)</option><option value="L">Laki-laki</option><option value="P">Perempuan</option></select><button class="p" onclick="addVoter()">Tambah</button></div></div>
+  <div class="card"><h2>Tempel banyak sekaligus</h2><p class="mut">Satu baris per orang: NISN, Nama, Kelas, JK (L/P, opsional).</p><textarea id="bulk" rows="3"></textarea><div style="margin-top:8px"><button onclick="bulkAdd()">Impor teks</button></div></div>
+  <div class="card"><h2>Daftar pemilih (${all.length})</h2><input id="qs" placeholder="Cari NISN, nama, atau kelas" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._t);window._t=setTimeout(()=>render(true),250)" style="margin-bottom:10px"><div class="tw"><table><tr><th>ID</th><th>Nama</th><th>Kelas</th><th>JK</th><th>Status</th><th></th></tr>${all.slice(0,80).map(([id,v])=>`<tr><td>${esc(id)}</td><td>${esc(v.name)}</td><td>${esc(v.group)}</td><td><select onchange="setJk('${esc(id)}',this.value)" style="padding:6px;min-width:64px"><option value="" ${v.jk?'':'selected'}>-</option><option value="L" ${v.jk==='L'?'selected':''}>L</option><option value="P" ${v.jk==='P'?'selected':''}>P</option></select></td><td>${v.voted?'<span class="ok">Sudah</span>':'<span class="mut">Belum</span>'}</td><td>${v.voted?'':`<button class="d" onclick="delDoc('voters','${esc(id)}')">Hapus</button>`}</td></tr>`).join('')}</table></div>${all.length>80?'<p class="mut">Menampilkan 80 pertama, gunakan pencarian.</p>':''}</div>`;
 }
 function candsTab(){
   const cs=sorted();
@@ -336,7 +348,7 @@ function ctrlTab(){
   <div class="card"><h2>Reset</h2><p class="mut">Menghapus semua suara dan status memilih. Gunakan hanya untuk uji coba sebelum hari-H.</p><button class="d" onclick="resetAll()">${armed?'Klik lagi untuk konfirmasi reset':'Reset semua suara'}</button></div>`;
 }
 
-Object.assign(window,{doLogin,submitVote,adminLogin,logout,addVoter,bulkAdd,addCand,setOpen,delDoc,resetAll,exportCsv,tog,render,goFull,toggleHide,startPresent,stopPresent,CD,importExcel,template,pickPhoto,editCand,cancelCD,
+Object.assign(window,{doLogin,submitVote,adminLogin,logout,addVoter,bulkAdd,addCand,setOpen,delDoc,resetAll,exportCsv,tog,render,setJk,goFull,toggleHide,startPresent,stopPresent,CD,importExcel,template,pickPhoto,editCand,cancelCD,
   pick:id=>{V.sel=id;render(true)},cancelV:()=>{V={stage:'login'};render(true);presence(false)}});
 Object.defineProperties(window,{
   view:{get:()=>view,set:v=>{view=v},configurable:true},

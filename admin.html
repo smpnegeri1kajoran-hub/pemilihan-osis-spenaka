@@ -151,6 +151,27 @@ async function importRows(rows){
   if(c)await b.commit();
   note=n+' pemilih ditambahkan, '+upd+' data JK diperbarui, '+skip+' dilewati (duplikat/kosong).';render(true);
 }
+const ED={};
+const clearED=()=>Object.keys(ED).forEach(k=>delete ED[k]);
+function editVoter(id){const v=S.voters[id];if(!v)return;clearED();Object.assign(ED,{id,nid:id,name:v.name||'',group:v.group||GROUPS[0],jk:v.jk||'',voted:!!v.voted});note='';window.scrollTo({top:0,behavior:'smooth'});render(true)}
+function cancelED(){clearED();render(true)}
+async function saveED(){
+  const nid=clean(ED.nid),nm=(ED.name||'').trim();
+  if(!nid||!nm){note='NISN/ID dan nama wajib diisi.';return render(true)}
+  try{
+    if(nid===ED.id){await updateDoc(doc(db,'voters',ED.id),{name:nm,group:ED.group,jk:ED.jk||''})}
+    else{
+      if(S.voters[nid]){note='ID '+nid+' sudah dipakai pemilih lain.';return render(true)}
+      if(S.voters[ED.id]&&S.voters[ED.id].voted){note='ID pemilih yang sudah memilih tidak bisa diubah.';return render(true)}
+      const b=writeBatch(db);
+      b.set(doc(db,'voters',nid),{name:nm,group:ED.group,jk:ED.jk||'',voted:false});
+      b.delete(doc(db,'voters',ED.id));
+      await b.commit();
+    }
+    note='Data '+nm+' berhasil diperbarui.';clearED();
+  }catch(e){note='Gagal menyimpan perubahan.'}
+  render(true);
+}
 async function setJk(id,v){try{await updateDoc(doc(db,'voters',id),{jk:v})}catch(e){note='Gagal menyimpan JK.';render(true)}}
 async function bulkAdd(){
   await importRows($('bulk').value.split('\n').map(l=>l.split(/[,;\t]/).map(x=>x.trim())))
@@ -295,10 +316,11 @@ function presentView(){
 }
 function votersTab(){
   const ql=q.toLowerCase(),all=Object.entries(S.voters).filter(([id,v])=>!ql||id.toLowerCase().includes(ql)||String(v.name).toLowerCase().includes(ql)||String(v.group).toLowerCase()===ql);
-  return `<div class="card"><h2>Impor dari Excel</h2><p class="mut">Kolom: <b>NISN/ID, Nama, Kelas, JK (L/P)</b> (baris pertama boleh berupa judul). Format kolom NISN sebagai Teks agar angka 0 di depan tidak hilang. Kelas ditulis 7A, 8B, 9C, Guru, atau Karyawan. Kolom JK diisi L atau P (untuk siswa). Mengimpor ulang file yang berisi JK akan memperbarui JK pemilih yang sudah terdaftar tanpa menghapus datanya.</p><div class="row"><input id="xf" type="file" accept=".xlsx,.xls,.csv"><button class="p" onclick="importExcel()">Impor file</button><button onclick="template()">Unduh template</button></div></div>
+  const edForm=ED.id?`<div class="card" style="border-color:var(--pri)"><h2>Ubah data pemilih</h2><div class="row"><input placeholder="NISN / NIP / ID" value="${esc(ED.nid)}" oninput="ED.nid=this.value" ${ED.voted?'disabled':''}><input placeholder="Nama lengkap" value="${esc(ED.name)}" oninput="ED.name=this.value"></div><div class="row" style="margin-top:8px"><select onchange="ED.group=this.value">${(GROUPS.includes(ED.group)?GROUPS:[ED.group,...GROUPS]).map(g=>`<option ${g===ED.group?'selected':''}>${esc(g)}</option>`).join('')}</select><select onchange="ED.jk=this.value"><option value="" ${ED.jk?'':'selected'}>JK (kosong)</option><option value="L" ${ED.jk==='L'?'selected':''}>Laki-laki</option><option value="P" ${ED.jk==='P'?'selected':''}>Perempuan</option></select></div>${ED.voted?'<p class="mut">Pemilih ini sudah memilih, jadi NISN/ID dikunci. Nama, kelas, dan JK tetap bisa diubah.</p>':''}<div class="row" style="margin-top:12px"><button class="p" onclick="saveED()">Simpan perubahan</button><button onclick="cancelED()">Batal</button></div></div>`:'';
+  return `${edForm}<div class="card"><h2>Impor dari Excel</h2><p class="mut">Kolom: <b>NISN/ID, Nama, Kelas, JK (L/P)</b> (baris pertama boleh berupa judul). Format kolom NISN sebagai Teks agar angka 0 di depan tidak hilang. Kelas ditulis 7A, 8B, 9C, Guru, atau Karyawan. Kolom JK diisi L atau P (untuk siswa). Mengimpor ulang file yang berisi JK akan memperbarui JK pemilih yang sudah terdaftar tanpa menghapus datanya.</p><div class="row"><input id="xf" type="file" accept=".xlsx,.xls,.csv"><button class="p" onclick="importExcel()">Impor file</button><button onclick="template()">Unduh template</button></div></div>
   <div class="card"><h2>Tambah pemilih yang belum terdaftar</h2><div class="row"><input id="vid" placeholder="NISN / NIP / ID"><input id="vnm" placeholder="Nama lengkap"><select id="vg">${GROUPS.map(g=>`<option>${g}</option>`).join('')}</select><select id="vjk"><option value="">JK (opsional)</option><option value="L">Laki-laki</option><option value="P">Perempuan</option></select><button class="p" onclick="addVoter()">Tambah</button></div></div>
   <div class="card"><h2>Tempel banyak sekaligus</h2><p class="mut">Satu baris per orang: NISN, Nama, Kelas, JK (L/P, opsional).</p><textarea id="bulk" rows="3"></textarea><div style="margin-top:8px"><button onclick="bulkAdd()">Impor teks</button></div></div>
-  <div class="card"><h2>Daftar pemilih (${all.length})</h2><input id="qs" placeholder="Cari NISN, nama, atau kelas" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._t);window._t=setTimeout(()=>render(true),250)" style="margin-bottom:10px"><div class="tw"><table><tr><th>ID</th><th>Nama</th><th>Kelas</th><th>JK</th><th>Status</th><th></th></tr>${all.slice(0,80).map(([id,v])=>`<tr><td>${esc(id)}</td><td>${esc(v.name)}</td><td>${esc(v.group)}</td><td><select onchange="setJk('${esc(id)}',this.value)" style="padding:6px;min-width:64px"><option value="" ${v.jk?'':'selected'}>-</option><option value="L" ${v.jk==='L'?'selected':''}>L</option><option value="P" ${v.jk==='P'?'selected':''}>P</option></select></td><td>${v.voted?'<span class="ok">Sudah</span>':'<span class="mut">Belum</span>'}</td><td>${v.voted?'':`<button class="d" onclick="delDoc('voters','${esc(id)}')">Hapus</button>`}</td></tr>`).join('')}</table></div>${all.length>80?'<p class="mut">Menampilkan 80 pertama, gunakan pencarian.</p>':''}</div>`;
+  <div class="card"><h2>Daftar pemilih (${all.length})</h2><input id="qs" placeholder="Cari NISN, nama, atau kelas" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._t);window._t=setTimeout(()=>render(true),250)" style="margin-bottom:10px"><div class="tw"><table><tr><th>ID</th><th>Nama</th><th>Kelas</th><th>JK</th><th>Status</th><th></th></tr>${all.slice(0,80).map(([id,v])=>`<tr><td>${esc(id)}</td><td>${esc(v.name)}</td><td>${esc(v.group)}</td><td><select onchange="setJk('${esc(id)}',this.value)" style="padding:6px;min-width:64px"><option value="" ${v.jk?'':'selected'}>-</option><option value="L" ${v.jk==='L'?'selected':''}>L</option><option value="P" ${v.jk==='P'?'selected':''}>P</option></select></td><td>${v.voted?'<span class="ok">Sudah</span>':'<span class="mut">Belum</span>'}</td><td style="white-space:nowrap"><button onclick="editVoter('${esc(id)}')">Edit</button> ${v.voted?'':`<button class="d" onclick="delDoc('voters','${esc(id)}')">Hapus</button>`}</td></tr>`).join('')}</table></div>${all.length>80?'<p class="mut">Menampilkan 80 pertama, gunakan pencarian.</p>':''}</div>`;
 }
 function candsTab(){
   const cs=sorted();
@@ -315,7 +337,7 @@ function ctrlTab(){
   <div class="card"><h2>Reset</h2><p class="mut">Menghapus semua suara dan status memilih. Gunakan hanya untuk uji coba sebelum hari-H.</p><button class="d" onclick="resetAll()">${armed?'Klik lagi untuk konfirmasi reset':'Reset semua suara'}</button></div>`;
 }
 
-Object.assign(window,{doLogin,submitVote,adminLogin,logout,addVoter,bulkAdd,addCand,setOpen,delDoc,resetAll,exportCsv,tog,render,setJk,goFull,toggleHide,startPresent,stopPresent,CD,importExcel,template,pickPhoto,editCand,cancelCD,
+Object.assign(window,{doLogin,submitVote,adminLogin,logout,addVoter,bulkAdd,addCand,setOpen,delDoc,resetAll,exportCsv,tog,render,setJk,editVoter,cancelED,saveED,ED,goFull,toggleHide,startPresent,stopPresent,CD,importExcel,template,pickPhoto,editCand,cancelCD,
   pick:id=>{V.sel=id;render(true)},cancelV:()=>{V={stage:'login'};render(true)}});
 Object.defineProperties(window,{
   view:{get:()=>view,set:v=>{view=v},configurable:true},

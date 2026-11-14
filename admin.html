@@ -151,7 +151,8 @@ async function importRows(rows){
   if(c)await b.commit();
   note=n+' pemilih ditambahkan, '+upd+' data JK diperbarui, '+skip+' dilewati (duplikat/kosong).';render(true);
 }
-const ED={};
+const ED={},F={k:'',s:'',j:'',o:'group',lim:80};
+function resetF(){F.k='';F.s='';F.j='';F.o='group';F.lim=80;q='';render(true)}
 const clearED=()=>Object.keys(ED).forEach(k=>delete ED[k]);
 function editVoter(id){const v=S.voters[id];if(!v)return;clearED();Object.assign(ED,{id,nid:id,name:v.name||'',group:v.group||GROUPS[0],jk:v.jk||'',voted:!!v.voted});note='';render(true)}
 function cancelED(){clearED();render(true)}
@@ -252,8 +253,10 @@ function render(force){
   const head=A?`<header><h1>Panel Admin – Pemilihan OSIS</h1><div class="row" style="flex:0 1 auto">${open}${btn}</div></header>`
     :`<header class="hd">${fsOk?'<button class="fsbtn" onclick="goFull()">⛶ Layar penuh</button>':''}<div class="logos"><img class="logo" src="logo.png" alt="Logo SMP Negeri 1 Kajoran" onerror="this.remove()"><img class="logo" src="kpu-osis.png" alt="Logo KPU OSIS" onerror="this.remove()"></div><h1>Pemilihan Ketua OSIS dan Wakil Ketua OSIS</h1><div class="sch">SMP Negeri 1 Kajoran</div>${V.stage==='login'?`<div>${open}</div>`:''}</header>`;
   document.body.classList.toggle('vm',MODE==='vote');document.body.classList.toggle('ballot',MODE==='vote'&&V.stage==='ballot');
+  const qsel=document.activeElement&&document.activeElement.id==='qs'?document.activeElement.selectionStart:null;
   $('app').innerHTML=head
     +(fatal?`<div class="card err">${esc(fatal)}</div>`:!S.ready?'<div class="card">Memuat...</div>':A?(admin?adminView():loginView()):voteView());
+  if(qsel!==null){const e=$('qs');if(e){e.focus();try{e.setSelectionRange(qsel,qsel)}catch(x){}}}
 }
 function tog(){view=view==='admin'?'vote':'admin';render(true)}
 function loginView(){return `<div class="card"><h2>Login admin</h2><div class="row"><input id="em" type="email" placeholder="Email admin" autocomplete="username"><input id="pw" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')adminLogin()"><button class="p" onclick="adminLogin()">Masuk</button></div><p class="err">${esc(loginMsg)}</p></div>`}
@@ -315,7 +318,18 @@ function presentView(){
   <p class="mut">Total ${total} suara masuk dari ${vs.length} pemilih terdaftar (partisipasi ${vs.length?Math.round(done/vs.length*100):0}%)</p></div>`;
 }
 function votersTab(){
-  const ql=q.toLowerCase(),all=Object.entries(S.voters).filter(([id,v])=>!ql||id.toLowerCase().includes(ql)||String(v.name).toLowerCase().includes(ql)||String(v.group).toLowerCase()===ql);
+  const ql=q.toLowerCase(),tx=x=>String(x==null?'':x),gi=g=>{const k=GROUPS.indexOf(g);return k<0?999:k};
+  const everyone=Object.entries(S.voters);
+  const all=everyone.filter(([id,v])=>(!ql||id.toLowerCase().includes(ql)||tx(v.name).toLowerCase().includes(ql)||tx(v.group).toLowerCase()===ql)&&(!F.k||v.group===F.k)&&(!F.s||((F.s==='sudah')===!!v.voted))&&(!F.j||(F.j==='-'?!v.jk:v.jk===F.j)));
+  const SORTS={name:(a,b)=>tx(a[1].name).localeCompare(tx(b[1].name),'id'),namez:(a,b)=>tx(b[1].name).localeCompare(tx(a[1].name),'id'),
+    group:(a,b)=>gi(a[1].group)-gi(b[1].group)||tx(a[1].name).localeCompare(tx(b[1].name),'id'),
+    id:(a,b)=>tx(a[0]).localeCompare(tx(b[0]),undefined,{numeric:true}),
+    belum:(a,b)=>(!!a[1].voted-!!b[1].voted)||SORTS.name(a,b),sudah:(a,b)=>(!!b[1].voted-!!a[1].voted)||SORTS.name(a,b),
+    jk:(a,b)=>tx(a[1].jk||'z').localeCompare(tx(b[1].jk||'z'))||SORTS.name(a,b)};
+  all.sort(SORTS[F.o]||SORTS.group);
+  const cnt={};everyone.forEach(([id,v])=>{cnt[v.group]=(cnt[v.group]||0)+1});
+  const sel=(cur,list)=>list.map(([v,t])=>`<option value="${esc(v)}" ${cur===v?'selected':''}>${esc(t)}</option>`).join('');
+  const filt=`<div class="row" style="margin-bottom:10px"><select onchange="F.k=this.value;F.lim=80;render(true)">${sel(F.k,[['','Semua kelas'],...GROUPS.map(g=>[g,g+' ('+(cnt[g]||0)+')'])])}</select><select onchange="F.s=this.value;F.lim=80;render(true)">${sel(F.s,[['','Semua status'],['belum','Belum memilih'],['sudah','Sudah memilih']])}</select><select onchange="F.j=this.value;F.lim=80;render(true)">${sel(F.j,[['','Semua JK'],['L','Laki-laki'],['P','Perempuan'],['-','JK kosong']])}</select><select onchange="F.o=this.value;render(true)">${sel(F.o,[['group','Urutkan: Kelas'],['name','Urutkan: Nama A-Z'],['namez','Urutkan: Nama Z-A'],['id','Urutkan: NISN/ID'],['belum','Urutkan: Belum memilih dulu'],['sudah','Urutkan: Sudah memilih dulu'],['jk','Urutkan: JK']])}</select><button onclick="resetF()">Reset</button></div>`;
   const gopts=(GROUPS.includes(ED.group)?GROUPS:[ED.group,...GROUPS]).map(g=>`<option ${g===ED.group?'selected':''}>${esc(g)}</option>`).join('');
   const ek="onkeydown=\"if(event.key==='Enter')saveED();if(event.key==='Escape')cancelED()\"";
   const row=([id,v])=>ED.id===id
@@ -324,7 +338,7 @@ function votersTab(){
   return `<div class="card"><h2>Impor dari Excel</h2><p class="mut">Kolom: <b>NISN/ID, Nama, Kelas, JK (L/P)</b> (baris pertama boleh berupa judul). Format kolom NISN sebagai Teks agar angka 0 di depan tidak hilang. Kelas ditulis 7A, 8B, 9C, Guru, atau Karyawan. Kolom JK diisi L atau P (untuk siswa). Mengimpor ulang file yang berisi JK akan memperbarui JK pemilih yang sudah terdaftar tanpa menghapus datanya.</p><div class="row"><input id="xf" type="file" accept=".xlsx,.xls,.csv"><button class="p" onclick="importExcel()">Impor file</button><button onclick="template()">Unduh template</button></div></div>
   <div class="card"><h2>Tambah pemilih yang belum terdaftar</h2><div class="row"><input id="vid" placeholder="NISN / NIP / ID"><input id="vnm" placeholder="Nama lengkap"><select id="vg">${GROUPS.map(g=>`<option>${g}</option>`).join('')}</select><select id="vjk"><option value="">JK (opsional)</option><option value="L">Laki-laki</option><option value="P">Perempuan</option></select><button class="p" onclick="addVoter()">Tambah</button></div></div>
   <div class="card"><h2>Tempel banyak sekaligus</h2><p class="mut">Satu baris per orang: NISN, Nama, Kelas, JK (L/P, opsional).</p><textarea id="bulk" rows="3"></textarea><div style="margin-top:8px"><button onclick="bulkAdd()">Impor teks</button></div></div>
-  <div class="card"><h2>Daftar pemilih (${all.length})</h2><input id="qs" placeholder="Cari NISN, nama, atau kelas" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._t);window._t=setTimeout(()=>render(true),250)" style="margin-bottom:10px"><div class="tw"><table><tr><th>ID</th><th>Nama</th><th>Kelas</th><th>JK</th><th>Status</th><th></th></tr>${all.slice(0,80).map(row).join('')}</table></div>${all.length>80?'<p class="mut">Menampilkan 80 pertama, gunakan pencarian.</p>':''}</div>`;
+  <div class="card"><h2>Daftar pemilih (${all.length===everyone.length?all.length:all.length+' dari '+everyone.length})</h2><input id="qs" placeholder="Cari NISN, nama, atau kelas" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._t);window._t=setTimeout(()=>render(true),250)" style="margin-bottom:10px">${filt}<div class="tw"><table><tr><th>ID</th><th>Nama</th><th>Kelas</th><th>JK</th><th>Status</th><th></th></tr>${all.slice(0,F.lim).map(row).join('')}</table></div>${all.length>F.lim?`<p class="mut">Menampilkan ${F.lim} dari ${all.length}. <button onclick="F.lim+=80;render(true)">Tampilkan 80 lagi</button> <button onclick="F.lim=99999;render(true)">Tampilkan semua</button></p>`:''}${all.length?'':'<p class="mut">Tidak ada pemilih yang cocok dengan filter.</p>'}</div>`;
 }
 function candsTab(){
   const cs=sorted();
@@ -341,7 +355,7 @@ function ctrlTab(){
   <div class="card"><h2>Reset</h2><p class="mut">Menghapus semua suara dan status memilih. Gunakan hanya untuk uji coba sebelum hari-H.</p><button class="d" onclick="resetAll()">${armed?'Klik lagi untuk konfirmasi reset':'Reset semua suara'}</button></div>`;
 }
 
-Object.assign(window,{doLogin,submitVote,adminLogin,logout,addVoter,bulkAdd,addCand,setOpen,delDoc,resetAll,exportCsv,tog,render,setJk,editVoter,cancelED,saveED,ED,goFull,toggleHide,startPresent,stopPresent,CD,importExcel,template,pickPhoto,editCand,cancelCD,
+Object.assign(window,{doLogin,submitVote,adminLogin,logout,addVoter,bulkAdd,addCand,setOpen,delDoc,resetAll,exportCsv,tog,render,setJk,editVoter,cancelED,saveED,ED,F,resetF,goFull,toggleHide,startPresent,stopPresent,CD,importExcel,template,pickPhoto,editCand,cancelCD,
   pick:id=>{V.sel=id;render(true)},cancelV:()=>{V={stage:'login'};render(true)}});
 Object.defineProperties(window,{
   view:{get:()=>view,set:v=>{view=v},configurable:true},

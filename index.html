@@ -48,6 +48,8 @@ button.d{color:var(--err)}button:disabled{opacity:.4;cursor:not-allowed}
 .mm .lg{font-size:1.1rem;gap:22px;margin-top:30px}.mm .lg i{width:16px;height:16px}
 @media(max-width:900px){.mm .mc{flex-basis:calc((100% - 14px)/2)}}
 @media(max-width:560px){.mm .mc{flex-basis:100%}}
+.mm .emp{margin:16px auto 0;text-align:center;color:var(--mut);font-size:clamp(1.3rem,2vw,1.9rem);line-height:1.4;text-wrap:balance}
+.mm .emp+.lg{margin-top:44px}
 </style>
 </head>
 <body>
@@ -354,8 +356,8 @@ function monitorView(){
     return `<div class="card mc" style="border-top:6px solid ${c};background:color-mix(in srgb,${c} 10%,var(--card))">${a.bilik?`<div class="mut">Bilik ${esc(a.bilik)}</div>`:''}<div class="mn">${esc(a.name)}</div><div class="mut">${esc(a.group)}</div><span class="chip" style="color:color-mix(in srgb,${c} 62%,var(--tx));border-color:${c}">${K.t}</span><div class="mut" style="font-size:.8rem">Sedang memberikan suara</div>${hint(a,k)?`<div class="mut" style="font-size:.72rem;opacity:.85">${hint(a,k)}</div>`:''}</div>`};
   return `<header class="hd">${fsOk?'<button class="fsbtn" onclick="goFull()">⛶ Layar penuh</button>':''}<div class="logos"><img class="logo" src="logo.png" alt="" onerror="this.remove()"><img class="logo" src="kpu-osis.png" alt="" onerror="this.remove()"></div><h1>Pemilih di Bilik Suara</h1><div class="sch">SMP Negeri 1 Kajoran</div></header>
   <div class="mon">${L.map(card).join('')}</div>
-  ${L.length?'':'<p class="mut c" style="margin-top:18px">Bilik suara kosong. Silakan masuk dan tunjukkan kartu pemilih kepada panitia.</p>'}
-  <div class="lg" style="justify-content:center;margin-top:24px">${['putra','putri','guru','karyawan'].map(k=>`<span><i style="background:${KAT[k].c}"></i>${KAT[k].t}</span>`).join('')}</div>`;
+  ${L.length?'':'<p class="emp">Bilik suara kosong. Silakan masuk dan tunjukkan kartu pemilih kepada panitia.</p>'}
+  <div class="lg" style="justify-content:center">${['putra','putri','guru','karyawan'].map(k=>`<span><i style="background:${KAT[k].c}"></i>${KAT[k].t}</span>`).join('')}</div>`;
 }
 if(MODE==='monitor')setInterval(()=>render(true),10000);
 function tog(){view=view==='admin'?'vote':'admin';render(true)}

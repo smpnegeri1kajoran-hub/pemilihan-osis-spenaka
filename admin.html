@@ -49,11 +49,13 @@ button.d{color:var(--err)}button:disabled{opacity:.4;cursor:not-allowed}
 .vc .bd{flex:1;display:grid;grid-template-columns:auto 1fr;column-gap:3mm;row-gap:.8mm;align-content:center;font-size:8.5pt}
 .vc .bd .k{color:#444}.vc .bd .v{font-weight:700}.vc .bd .id{font-size:13pt;letter-spacing:.08em}
 .vc .ft{font-size:6pt;text-align:center;border-top:1px solid #aaa;padding-top:1mm}.vc .ft{color:#444}
+.vc .mid{flex:1;display:flex;align-items:center;gap:3mm;min-height:0}.vc .mid .bd{flex:1;min-width:0}.vc .qr{flex:0 0 22mm;width:22mm;height:22mm;background:#fff}.vc .qr svg{width:100%;height:100%;display:block}
 </style>
 </head>
 <body>
 <div class="w"><div id="app"></div></div>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {getAuth,onAuthStateChanged,signInAnonymously,signInWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -421,11 +423,14 @@ let LASTF=[];
 const K={g:'',belum:false,tgl:'',id:'',ids:null};
 function cardOf(id){K.id=id;K.ids=null;tab='kartu';note='';render(true);window.scrollTo({top:0,behavior:'smooth'})}
 function cardsFromFilter(){K.ids=LASTF.slice();K.id='';tab='kartu';note='';render(true);window.scrollTo({top:0,behavior:'smooth'})}
+function qrSvg(text){
+  try{if(!window.qrcode)return '';const q=qrcode(0,'M');q.addData(text);q.make();return q.createSvgTag({cellSize:2,margin:4,scalable:true})}catch(e){return ''}
+}
 function cardHtml(id,v,tgl){
-  const g=v.group,isG=g==='Guru',isK=g==='Karyawan',idl=isG?'NIP/ID':isK?'ID':'NISN',l2=(isG||isK)?'Status':'Kelas';
+  const g=v.group,isG=g==='Guru',isK=g==='Karyawan',idl=isG?'NIP/ID':isK?'ID':'NISN',l2=(isG||isK)?'Status':'Kelas',qr=qrSvg('OSIS:'+id);
   return `<div class="vc"><div class="hd2"><img src="logo.png" alt="" onerror="this.remove()"><div class="ht"><b>KARTU PEMILIH</b><small>Pemilihan Ketua OSIS dan Wakil Ketua OSIS</small><small>SMP Negeri 1 Kajoran</small></div><img src="kpu-osis.png" alt="" onerror="this.remove()"></div>
-  <div class="bd"><span class="k">Nama</span><span class="v">${esc(v.name)}</span><span class="k">${l2}</span><span class="v">${esc(g)}</span><span class="k">${idl}</span><span class="v id">${esc(id)}</span>${tgl?`<span class="k">Tanggal</span><span class="v">${esc(tgl)}</span>`:''}</div>
-  <div class="ft">Kartu ini hanya berlaku untuk satu kali pemilihan. Tunjukkan kepada panitia, lalu masukkan nomor di atas pada tablet bilik suara.</div></div>`;
+  <div class="mid"><div class="bd"><span class="k">Nama</span><span class="v">${esc(v.name)}</span><span class="k">${l2}</span><span class="v">${esc(g)}</span><span class="k">${idl}</span><span class="v id">${esc(id)}</span>${tgl?`<span class="k">Tanggal</span><span class="v">${esc(tgl)}</span>`:''}</div>${qr?`<div class="qr">${qr}</div>`:''}</div>
+  <div class="ft">Pindai QR di tablet bilik suara atau ketik nomor di atas. Kartu hanya berlaku untuk satu kali pemilihan.</div></div>`;
 }
 function kartuTab(){
   const tx=x=>String(x==null?'':x),gi=g=>{const k=GROUPS.indexOf(g);return k<0?999:k},isStaff=v=>v.group==='Guru'||v.group==='Karyawan';
@@ -440,7 +445,7 @@ function kartuTab(){
   return `<div class="rptwrap"><div class="card noprint"><h2>Cetak kartu pemilih</h2>
   ${mode?`<p>${mode} <button onclick="K.id='';K.ids=null;render(true)">Pilih per kategori</button></p>`:`<div class="row"><select onchange="K.g=this.value;render(true)">${opts}</select><label style="flex:0 0 auto;display:flex;gap:6px;align-items:center"><input type="checkbox" style="width:auto" ${K.belum?'checked':''} onchange="K.belum=this.checked;render(true)">Hanya yang belum memilih</label></div>`}
   <div class="row" style="margin-top:10px"><input placeholder="Tanggal pemilihan (opsional, tampil di kartu)" value="${esc(K.tgl)}" onchange="K.tgl=this.value;render(true)"><button class="p" onclick="window.print()" ${a.length?'':'disabled'}>Cetak ${a.length} kartu</button></div>
-  <p class="mut" style="margin:10px 0 0">Ukuran kartu 90 × 58 mm, 8 kartu per lembar A4 (2 kolom × 4 baris). Di jendela cetak pilih kertas A4 dan skala 100%. Garis putus-putus adalah panduan potong.</p></div>
+  ${window.qrcode?'':'<p class="err">Pustaka kode QR gagal dimuat (periksa koneksi internet lalu muat ulang). Kartu akan tercetak tanpa QR.</p>'}<p class="mut" style="margin:10px 0 0">Ukuran kartu 90 × 58 mm, 8 kartu per lembar A4 (2 kolom × 4 baris). Di jendela cetak pilih kertas A4 dan skala 100%. Garis putus-putus adalah panduan potong.</p></div>
   <div class="cards">${a.map(([id,v])=>cardHtml(id,v,K.tgl)).join('')||'<p class="mut">Tidak ada pemilih pada pilihan ini.</p>'}</div></div>`;
 }
 function ctrlTab(){

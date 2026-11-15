@@ -37,6 +37,7 @@ button.d{color:var(--err)}button:disabled{opacity:.4;cursor:not-allowed}
 <body>
 <div class="w"><div id="app"></div></div>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {getAuth,onAuthStateChanged,signInAnonymously,signInWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -64,6 +65,7 @@ if((MODE==='vote'||MODE==='monitor')&&fsOk){
 let hide=false,present=false;try{hide=localStorage.getItem('osis_hide')==='1'}catch(e){}
 const KAT={putra:{t:'Siswa Laki-laki',c:'#2f6fe4'},putri:{t:'Siswa Perempuan',c:'#d6458a'},guru:{t:'Guru',c:'#12a37f'},karyawan:{t:'Karyawan',c:'#e08a00'},siswa:{t:'Siswa',c:'#7a86a6'}};
 const katOf=(g,jk)=>g==='Guru'?'guru':g==='Karyawan'?'karyawan':jk==='P'?'putri':jk==='L'?'putra':'siswa';
+const scan={on:false,stream:null,t:0,to:0,facing:'user',last:'',lastT:0,hint:''};
 const GROUPS=[];['7','8','9'].forEach(g=>'ABCDEFG'.split('').forEach(c=>GROUPS.push(g+c)));GROUPS.push('Guru','Karyawan');
 const S={voters:{},candidates:{},votes:{},active:{},open:false,ready:false};
 const CD={},COL=['#2457d6','#e08a00','#12a37f','#c0392b','#8e44ad','#16a2b8'];
@@ -117,8 +119,8 @@ function startAdmin(){
 function stopAdmin(){unsubs.forEach(f=>f());unsubs=[];S.voters={};S.votes={}}
 
 /* ---------- voter flow ---------- */
-async function doLogin(){
-  const id=clean($('nid').value);
+async function doLogin(idArg){
+  const id=clean(typeof idArg==='string'?idArg:$('nid').value);
   const m=t=>{V.msg=t;render(true)};
   if(!id)return m('Masukkan NISN / NIP / ID');
   if(!S.open)return m('Pemilihan belum dibuka atau sudah ditutup.');
@@ -129,6 +131,54 @@ async function doLogin(){
     if(v.voted)return m('Nomor ini sudah menggunakan hak pilih.');
     V={stage:'ballot',id,name:v.name,group:v.group,sel:null};PA={name:v.name||'',group:v.group||'',kat:katOf(v.group,v.jk)};presence(true);render(true);
   }catch(e){m('Gagal memeriksa data. Periksa koneksi internet.')}
+}
+/* ---------- pindai QR kartu pemilih ---------- */
+const stopStream=()=>{if(scan.stream){scan.stream.getTracks().forEach(t=>t.stop());scan.stream=null}};
+function stopScan(){scan.on=false;clearTimeout(scan.t);clearTimeout(scan.to);stopStream()}
+async function openCam(){
+  stopStream();
+  const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:scan.facing,width:{ideal:1280},height:{ideal:720}},audio:false});
+  const vd=$('qv');if(!vd||!scan.on){st.getTracks().forEach(t=>t.stop());return}
+  scan.stream=st;vd.srcObject=st;await vd.play();
+}
+async function startScan(){
+  V.msg='';scan.hint='';
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){V.msg='Kamera tidak didukung di browser ini. Ketik NISN secara manual.';return render(true)}
+  scan.on=true;render(true);
+  clearTimeout(scan.to);scan.to=setTimeout(()=>{if(scan.on){stopScan();V.msg='Pemindaian dihentikan karena tidak ada kartu yang terbaca.';render(true)}},60000);
+  try{await openCam();tick()}catch(e){stopScan();V.msg='Kamera tidak bisa dibuka. Izinkan akses kamera di browser, atau ketik NISN secara manual.';render(true)}
+}
+async function flipCam(){
+  scan.facing=scan.facing==='user'?'environment':'user';
+  const vd=$('qv');if(vd)vd.style.transform=scan.facing==='user'?'scaleX(-1)':'none';
+  try{await openCam()}catch(e){}
+}
+function cancelScan(){stopScan();render(true)}
+const detector=('BarcodeDetector' in window)?(()=>{try{return new BarcodeDetector({formats:['qr_code']})}catch(e){return null}})():null;
+const cvs=document.createElement('canvas');
+async function tick(){
+  if(!scan.on)return;
+  const vd=$('qv');let txt='';
+  if(vd&&vd.readyState>=2&&vd.videoWidth){
+    try{
+      if(detector){const r=await detector.detect(vd);if(r.length)txt=r[0].rawValue||''}
+      else if(window.jsQR){
+        const k=Math.min(1,640/vd.videoWidth);cvs.width=Math.round(vd.videoWidth*k);cvs.height=Math.round(vd.videoHeight*k);
+        const cx=cvs.getContext('2d',{willReadFrequently:true});cx.drawImage(vd,0,0,cvs.width,cvs.height);
+        const im=cx.getImageData(0,0,cvs.width,cvs.height),r=jsQR(im.data,im.width,im.height,{inversionAttempts:'dontInvert'});if(r)txt=r.data;
+      }
+    }catch(e){}
+  }
+  if(txt&&await onQR(txt))return;
+  scan.t=setTimeout(tick,detector?150:220);
+}
+async function onQR(txt){
+  const now=Date.now();
+  if(txt===scan.last&&now-scan.lastT<2500)return false;
+  scan.last=txt;scan.lastT=now;
+  if(!/^OSIS:/.test(txt)){scan.hint='QR ini bukan kartu pemilih OSIS.';const e=$('qh');if(e)e.textContent=scan.hint;return false}
+  const id=clean(txt.slice(5));if(!id)return false;
+  stopScan();await doLogin(id);return true;
 }
 async function submitVote(){
   if(!V.sel||V.busy||!S.open)return;
@@ -243,6 +293,7 @@ function exportCsv(){
 
 /* ---------- views ---------- */
 function render(force){
+  if(!force&&scan.on)return;
   const a=document.activeElement;
   if(!force&&a&&$('app').contains(a)&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;
   if(!configured){$('app').innerHTML='<div class="card"><h2>Belum dikonfigurasi</h2><p>Isi konfigurasi Firebase di <code>index.html</code> (lihat README.md).</p></div>';return}
@@ -261,8 +312,9 @@ function render(force){
 function monitorView(){
   const now=Date.now(),ms=x=>x&&x.toMillis?x.toMillis():now;
   const L=Object.values(S.active).filter(a=>a&&now-ms(a.t)<150000).sort((a,b)=>ms(a.s||a.t)-ms(b.s||b.t)).slice(0,5);
+  const hint=(a,k)=>a.kat===undefined?'Tablet belum diperbarui (Ctrl+F5)':k==='siswa'&&a.group!=='Guru'&&a.group!=='Karyawan'?'JK siswa belum diisi':'';
   const card=a=>{const k=KAT[a.kat]?a.kat:katOf(a.group),K=KAT[k],c=K.c;
-    return `<div class="card mc" style="border-top:6px solid ${c};background:color-mix(in srgb,${c} 10%,var(--card))">${a.bilik?`<div class="mut">Bilik ${esc(a.bilik)}</div>`:''}<div class="mn">${esc(a.name)}</div><div class="mut">${esc(a.group)}</div><span class="chip" style="color:color-mix(in srgb,${c} 62%,var(--tx));border-color:${c}">${K.t}</span><div class="mut" style="font-size:.8rem">Sedang memilih</div></div>`};
+    return `<div class="card mc" style="border-top:6px solid ${c};background:color-mix(in srgb,${c} 10%,var(--card))">${a.bilik?`<div class="mut">Bilik ${esc(a.bilik)}</div>`:''}<div class="mn">${esc(a.name)}</div><div class="mut">${esc(a.group)}</div><span class="chip" style="color:color-mix(in srgb,${c} 62%,var(--tx));border-color:${c}">${K.t}</span><div class="mut" style="font-size:.8rem">Sedang memilih</div>${hint(a,k)?`<div class="mut" style="font-size:.72rem;opacity:.85">${hint(a,k)}</div>`:''}</div>`};
   return `<header class="hd">${fsOk?'<button class="fsbtn" onclick="goFull()">⛶ Layar penuh</button>':''}<div class="logos"><img class="logo" src="logo.png" alt="" onerror="this.remove()"><img class="logo" src="kpu-osis.png" alt="" onerror="this.remove()"></div><h1>Pemilih yang Sedang Memilih</h1><div class="sch">SMP Negeri 1 Kajoran</div></header>
   <div class="mon">${L.map(card).join('')}</div>
   ${L.length?'':'<p class="mut c" style="margin-top:18px">Belum ada pemilih yang sedang memilih.</p>'}
@@ -280,8 +332,13 @@ function voteView(){
     <div class="card row" style="margin-top:14px"><span>${V.sel&&S.candidates[V.sel]?'Pilihan: No '+esc(S.candidates[V.sel].no)+' – '+pname(S.candidates[V.sel]):'Belum memilih'}</span><button onclick="cancelV()">Batal</button><button class="p" ${V.sel&&!V.busy?'':'disabled'} onclick="submitVote()">${V.busy?'Menyimpan...':'Kirim Suara'}</button></div>
     ${V.msg?`<p class="err">${esc(V.msg)}</p>`:''}`;
   }
+  if(scan.on)return `<div class="card lc"><h2>Pindai QR pada kartu pemilih</h2><p class="mut">Arahkan kode QR di kartu ke kamera tablet.</p>
+    <div style="max-width:420px;margin:0 auto"><video id="qv" playsinline muted autoplay style="width:100%;border-radius:12px;background:#000;${scan.facing==='user'?'transform:scaleX(-1)':''}"></video></div>
+    <p id="qh" class="err" style="min-height:1.4em">${esc(scan.hint)}</p>
+    <div class="row" style="justify-content:center"><button onclick="flipCam()">Ganti kamera</button><button onclick="cancelScan()">Batal</button></div></div>`;
   return `<div class="card lc"><h2>Masuk untuk memilih</h2><p class="mut">Masukkan NISN (siswa) atau NIP/ID (guru &amp; karyawan).</p>
     <div class="row"><input id="nid" inputmode="numeric" autocomplete="off" placeholder="NISN / NIP / ID" onkeydown="if(event.key==='Enter')doLogin()"><button class="p" onclick="doLogin()">Masuk</button></div>
+    ${navigator.mediaDevices?'<div style="margin-top:10px"><button onclick="startScan()">Pindai kartu (QR)</button></div>':''}
     ${V.msg?`<p class="err">${esc(V.msg)}</p>`:''}</div>`;
 }
 function adminView(){
@@ -350,7 +407,7 @@ function ctrlTab(){
   <div class="card"><h2>Reset</h2><p class="mut">Menghapus semua suara dan status memilih. Gunakan hanya untuk uji coba sebelum hari-H.</p><button class="d" onclick="resetAll()">${armed?'Klik lagi untuk konfirmasi reset':'Reset semua suara'}</button></div>`;
 }
 
-Object.assign(window,{doLogin,submitVote,adminLogin,logout,addVoter,bulkAdd,addCand,setOpen,delDoc,resetAll,exportCsv,tog,render,setJk,goFull,toggleHide,startPresent,stopPresent,CD,importExcel,template,pickPhoto,editCand,cancelCD,
+Object.assign(window,{doLogin,submitVote,adminLogin,logout,addVoter,bulkAdd,addCand,setOpen,delDoc,resetAll,exportCsv,tog,render,setJk,goFull,startScan,flipCam,cancelScan,toggleHide,startPresent,stopPresent,CD,importExcel,template,pickPhoto,editCand,cancelCD,
   pick:id=>{V.sel=id;render(true)},cancelV:()=>{V={stage:'login'};render(true);presence(false)}});
 Object.defineProperties(window,{
   view:{get:()=>view,set:v=>{view=v},configurable:true},

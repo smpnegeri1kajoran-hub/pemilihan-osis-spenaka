@@ -251,12 +251,13 @@ async function resetAll(){
   note='Semua suara dan status memilih direset.';render(true);
 }
 function tally(){const t={};Object.values(S.votes).forEach(v=>t[v.c]=(t[v.c]||0)+1);return t}
-function exportCsv(){
-  const t=tally(),L=['Hasil,No,Nama,Suara'];
-  Object.entries(S.candidates).sort((a,b)=>a[1].no-b[1].no).forEach(([id,c])=>L.push(['Kandidat',c.no,'"'+c.name+(c.wakil?' & '+c.wakil:'')+'"',t[id]||0].join(',')));
-  L.push('','Kelompok,Terdaftar,Sudah memilih');
-  GROUPS.forEach(g=>{const a=Object.values(S.voters).filter(v=>v.group===g);L.push([g,a.length,a.filter(v=>v.voted).length].join(','))});
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([L.join('\n')],{type:'text/csv'}));a.download='hasil-osis.csv';a.click();
+function exportVoters(){
+  if(!window.XLSX){note='Pustaka Excel gagal dimuat. Periksa koneksi internet lalu muat ulang halaman.';return render(true)}
+  const jk=x=>x==='L'?'Laki-laki':x==='P'?'Perempuan':'';
+  const rows=LASTF.filter(id=>S.voters[id]).map(id=>{const v=S.voters[id];return [id,v.name||'',v.group||'',jk(v.jk),v.voted?'Sudah memilih':'Belum memilih']});
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['NISN/NIP/ID','Nama','Kelas','JK','Status'],...rows]),'Daftar Pemilih');
+  XLSX.writeFile(wb,'daftar-pemilih-osis.xlsx');
 }
 
 /* ---------- views ---------- */
@@ -348,7 +349,7 @@ function votersTab(){
   all.sort(SORTS[F.o]||SORTS.group);LASTF=all.map(x=>x[0]);
   const cnt={};everyone.forEach(([id,v])=>{cnt[v.group]=(cnt[v.group]||0)+1});
   const sel=(cur,list)=>list.map(([v,t])=>`<option value="${esc(v)}" ${cur===v?'selected':''}>${esc(t)}</option>`).join('');
-  const filt=`<div class="row" style="margin-bottom:10px"><select onchange="F.k=this.value;F.lim=80;render(true)">${sel(F.k,[['','Semua kelas'],...GROUPS.map(g=>[g,g+' ('+(cnt[g]||0)+')'])])}</select><select onchange="F.s=this.value;F.lim=80;render(true)">${sel(F.s,[['','Semua status'],['belum','Belum memilih'],['sudah','Sudah memilih']])}</select><select onchange="F.j=this.value;F.lim=80;render(true)">${sel(F.j,[['','Semua JK'],['L','Laki-laki'],['P','Perempuan'],['-','JK kosong']])}</select><select onchange="F.o=this.value;render(true)">${sel(F.o,[['group','Urutkan: Kelas'],['name','Urutkan: Nama A-Z'],['namez','Urutkan: Nama Z-A'],['id','Urutkan: NISN/ID'],['belum','Urutkan: Belum memilih dulu'],['sudah','Urutkan: Sudah memilih dulu'],['jk','Urutkan: JK']])}</select><button onclick="resetF()">Reset</button><button onclick="cardsFromFilter()">Cetak kartu (${all.length})</button></div>`;
+  const filt=`<div class="row" style="margin-bottom:10px"><select onchange="F.k=this.value;F.lim=80;render(true)">${sel(F.k,[['','Semua kelas'],...GROUPS.map(g=>[g,g+' ('+(cnt[g]||0)+')'])])}</select><select onchange="F.s=this.value;F.lim=80;render(true)">${sel(F.s,[['','Semua status'],['belum','Belum memilih'],['sudah','Sudah memilih']])}</select><select onchange="F.j=this.value;F.lim=80;render(true)">${sel(F.j,[['','Semua JK'],['L','Laki-laki'],['P','Perempuan'],['-','JK kosong']])}</select><select onchange="F.o=this.value;render(true)">${sel(F.o,[['group','Urutkan: Kelas'],['name','Urutkan: Nama A-Z'],['namez','Urutkan: Nama Z-A'],['id','Urutkan: NISN/ID'],['belum','Urutkan: Belum memilih dulu'],['sudah','Urutkan: Sudah memilih dulu'],['jk','Urutkan: JK']])}</select><button onclick="resetF()">Reset</button><button onclick="cardsFromFilter()">Cetak kartu (${all.length})</button><button onclick="exportVoters()">Unduh Excel (${all.length})</button></div>`;
   const gopts=(GROUPS.includes(ED.group)?GROUPS:[ED.group,...GROUPS]).map(g=>`<option ${g===ED.group?'selected':''}>${esc(g)}</option>`).join('');
   const ek="onkeydown=\"if(event.key==='Enter')saveED();if(event.key==='Escape')cancelED()\"";
   const row=([id,v])=>ED.id===id
@@ -449,11 +450,11 @@ function kartuTab(){
   <div class="cards">${a.map(([id,v])=>cardHtml(id,v,K.tgl)).join('')||'<p class="mut">Tidak ada pemilih pada pilihan ini.</p>'}</div></div>`;
 }
 function ctrlTab(){
-  return `<div class="card"><h2>Kontrol pemilihan</h2><p class="mut">Pemilih hanya bisa masuk dan mengirim suara saat pemilihan dibuka.</p><div class="row"><button class="p" ${S.open?'disabled':''} onclick="setOpen(true)">Buka pemilihan</button><button ${S.open?'':'disabled'} onclick="setOpen(false)">Tutup pemilihan</button><button onclick="exportCsv()">Unduh rekap CSV</button></div></div>
+  return `<div class="card"><h2>Kontrol pemilihan</h2><p class="mut">Pemilih hanya bisa masuk dan mengirim suara saat pemilihan dibuka.</p><div class="row"><button class="p" ${S.open?'disabled':''} onclick="setOpen(true)">Buka pemilihan</button><button ${S.open?'':'disabled'} onclick="setOpen(false)">Tutup pemilihan</button></div><p class="mut" style="margin:12px 0 0">Setelah pemilihan ditutup, buka tab <b>Rekap</b> untuk mencetak hasil atau mengunduhnya dalam bentuk Excel.</p></div>
   <div class="card"><h2>Reset</h2><p class="mut">Menghapus semua suara dan status memilih. Gunakan hanya untuk uji coba sebelum hari-H.</p><button class="d" onclick="resetAll()">${armed?'Klik lagi untuk konfirmasi reset':'Reset semua suara'}</button></div>`;
 }
 
-Object.assign(window,{doLogin,submitVote,adminLogin,logout,addVoter,bulkAdd,addCand,setOpen,delDoc,resetAll,exportCsv,tog,render,exportRekap,K,cardOf,cardsFromFilter,setJk,editVoter,cancelED,saveED,ED,F,resetF,goFull,toggleHide,startPresent,stopPresent,CD,importExcel,template,pickPhoto,editCand,cancelCD,
+Object.assign(window,{doLogin,submitVote,adminLogin,logout,addVoter,bulkAdd,addCand,setOpen,delDoc,resetAll,exportVoters,tog,render,exportRekap,K,cardOf,cardsFromFilter,setJk,editVoter,cancelED,saveED,ED,F,resetF,goFull,toggleHide,startPresent,stopPresent,CD,importExcel,template,pickPhoto,editCand,cancelCD,
   pick:id=>{V.sel=id;render(true)},cancelV:()=>{V={stage:'login'};render(true)}});
 Object.defineProperties(window,{
   view:{get:()=>view,set:v=>{view=v},configurable:true},

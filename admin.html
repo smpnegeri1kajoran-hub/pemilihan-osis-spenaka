@@ -62,6 +62,15 @@ button.d{color:var(--err)}button:disabled{opacity:.4;cursor:not-allowed}
 .pres .pc.win .photo{max-height:40vh}.pres .has-win .pc:not(.win) .photo{max-height:24vh}
 .pc.win .pnum{font-size:clamp(3.6rem,9vw,7rem)}.pc.win .big{font-size:1.5rem}.has-win .pc:not(.win) .pnum{font-size:clamp(2rem,5vw,3.2rem)}
 .wide .pc.win{grid-column:1/-1;order:-1}
+.pres.show{min-height:0;justify-content:flex-start;gap:6px;padding-top:44px;padding-bottom:64px}
+.pres.show .logos img{height:50px}.pres.show h1{font-size:clamp(1.2rem,2.3vw,1.8rem)!important}.pres.show .sch{font-size:.9rem}
+.pres.show .ban,.pres.show .ban2{font-size:clamp(1.1rem,2.3vw,1.7rem);margin:2px 0}
+.pres.show .pc{padding:10px 12px}.pres.show .pc .photo{margin-bottom:6px}
+.pres.show .pc.win .photo{max-height:30vh}.pres.show .has-win .pc:not(.win) .photo{max-height:19vh}.pres.show .pc:not(.win) .photo{max-height:24vh}
+.pres.show .pc.win .pnum{font-size:clamp(2.8rem,6.5vw,4.6rem)}.pres.show .pc:not(.win) .pnum{font-size:clamp(1.8rem,4vw,2.6rem)}.pres.show .pc.win .big{font-size:1.3rem}
+.pres.show .pc .mut{margin-bottom:4px!important}.pres.show .pc .bar{height:16px}
+.pres.show .tot{position:fixed;left:0;right:0;bottom:0;margin:0;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));text-align:center;background:var(--bg);border-top:1px solid var(--bd);z-index:15;font-size:1rem}
+@media (max-height:820px){.pres.show{padding-top:40px;gap:3px}.pres.show .logos img{height:40px}.pres.show .sch{display:none}.pres.show .pc.win .photo{max-height:25vh}.pres.show .has-win .pc:not(.win) .photo{max-height:16vh}.pres.show .pc:not(.win) .photo{max-height:20vh}.pres.show .pc{padding:8px 10px}.pres.show .pc.win .pnum{font-size:clamp(2.4rem,5.5vw,3.8rem)}.pres.show .pc:not(.win) .pnum{font-size:clamp(1.5rem,3.4vw,2.2rem)}.pres.show .ban{font-size:clamp(1rem,2vw,1.4rem)}}
 </style>
 </head>
 <body>
@@ -385,9 +394,9 @@ function presentView(){
   if(PH==='ready')return ctl+`<div class="pres">${logos}${h1('Pengumuman Hasil Pemilihan Ketua OSIS dan Wakil Ketua OSIS')}<p class="mut" style="font-size:1.2rem;margin:8px 0">Pemungutan suara telah ditutup.${vs.length?' '+done+' dari '+vs.length+' pemilih telah menggunakan hak pilihnya.':''}</p><div style="display:flex;gap:14px;justify-content:center;align-items:center;flex-wrap:wrap"><label class="mut">Hitung mundur <select onchange="setDur(this.value)" style="width:auto;padding:8px">${[5,10,15,30].map(x=>`<option value="${x}" ${DUR===x?'selected':''}>${x} detik</option>`).join('')}</select></label><button class="p" style="font-size:1.5rem;padding:16px 30px" onclick="startCount()">Mulai hitung mundur</button></div></div>`;
   if(PH==='count')return ctl+`<div class="pres">${logos}${h1('Pengumuman Hasil Pemilihan Ketua OSIS dan Wakil Ketua OSIS')}<div class="mut" style="font-size:clamp(1.1rem,2.4vw,1.8rem)">Hasil akan diumumkan dalam</div><div class="cdn">${CNT}</div></div>`;
   const ban=!total?'<div class="ban2">Belum ada suara yang masuk.</div>':one?`<div class="ban">🎉 Selamat kepada Paslon No ${esc(one[1].no)} – ${esc(one[1].name)}${one[1].wakil?' &amp; '+esc(one[1].wakil):''} 🎉</div>`:'<div class="ban2">Perolehan suara tertinggi seri. Keputusan selanjutnya ditentukan oleh panitia.</div>';
-  return ctl+`<div class="pres ${rv?'anim':''}">${logos}${h1('Hasil Pemilihan Ketua OSIS dan Wakil Ketua OSIS')}${ban}
-  <div class="pg c${cols}${one?' has-win':''}${one&&cs.length>3?' wide':''}" style="margin-top:8px;${one&&cs.length<=3?`grid-template-columns:${cs.map(([id])=>one[0]===id?'1.6fr':'1fr').join(' ')};align-items:center`:''}">${cs.map(([id,c],i)=>{const n=t[id]||0,pc=total?Math.round(n/total*100):0,w=one&&one[0]===id;return `<div class="card pc${w?' win':''}" style="border-color:${COL[i%6]};border-width:2px">${img(c,'photo')}<div class="big" style="color:${tc(i)};font-weight:700">Paslon No ${esc(c.no)} ${tag(id)}</div><div><b>${esc(c.name)}</b>${c.wakil?'<br><b>'+esc(c.wakil)+'</b>':''}</div><div class="pnum" style="margin-top:8px">${n}</div><div class="mut" style="margin-bottom:8px">suara · ${pc}%</div><div class="bar"><i style="width:${pc}%;background:${COL[i%6]}"></i></div></div>`}).join('')}</div>
-  <p class="mut">Total ${total} suara masuk dari ${vs.length} pemilih terdaftar (partisipasi ${vs.length?Math.round(done/vs.length*100):0}%)</p></div>`;
+  return ctl+`<div class="pres show ${rv?'anim':''}">${logos}${h1('Hasil Pemilihan Ketua OSIS dan Wakil Ketua OSIS')}${ban}
+  <div class="pg c${cols}${one?' has-win':''}${cs.length>6?' wide':''}" style="margin-top:8px;${cs.length&&cs.length<=6?`grid-template-columns:${cs.map(([id])=>one&&one[0]===id?'1.5fr':'1fr').join(' ')};align-items:center`:''}">${cs.map(([id,c],i)=>{const n=t[id]||0,pc=total?Math.round(n/total*100):0,w=one&&one[0]===id;return `<div class="card pc${w?' win':''}" style="border-color:${COL[i%6]};border-width:2px">${img(c,'photo')}<div class="big" style="color:${tc(i)};font-weight:700">Paslon No ${esc(c.no)} ${tag(id)}</div><div><b>${esc(c.name)}</b>${c.wakil?' &amp; <b>'+esc(c.wakil)+'</b>':''}</div><div class="pnum" style="margin-top:4px">${n}</div><div class="mut" style="margin-bottom:8px">suara · ${pc}%</div><div class="bar"><i style="width:${pc}%;background:${COL[i%6]}"></i></div></div>`}).join('')}</div>
+  <p class="mut tot">Total ${total} suara masuk dari ${vs.length} pemilih terdaftar (partisipasi ${vs.length?Math.round(done/vs.length*100):0}%)</p></div>`;
 }
 function votersTab(){
   const ql=q.toLowerCase(),tx=x=>String(x==null?'':x),gi=g=>{const k=GROUPS.indexOf(g);return k<0?999:k};

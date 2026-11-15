@@ -37,6 +37,17 @@ button.d{color:var(--err)}button:disabled{opacity:.4;cursor:not-allowed}
 .typing .hd .logos,.typing .hd .sch,.typing .hd>div:last-child{display:none}.typing .hd{margin-bottom:8px;gap:2px}.typing .hd h1{font-size:1.1rem}
 .vm.typing .w{justify-content:flex-start;min-height:0;padding-top:10px}
 }
+/* ---- monitor bilik: tampilan lebih besar ---- */
+.mm .w{max-width:1400px}
+.mm .hd{gap:8px;margin-bottom:28px}.mm .hd .logo{height:104px}
+.mm .hd h1{font-size:clamp(2.2rem,3.3vw,3.4rem)}.mm .hd .sch{font-size:clamp(1.2rem,1.8vw,1.7rem)}
+.mm .mon{gap:14px}
+.mm .mc{flex:0 0 calc((100% - 56px)/5);min-width:0;padding:28px 14px;gap:10px;min-height:270px}
+.mm .mn{font-size:clamp(1.3rem,1.95vw,1.95rem)}
+.mm .mc .mut{font-size:1rem!important}.mm .mc .chip{font-size:.95rem;padding:4px 14px}
+.mm .lg{font-size:1.1rem;gap:22px;margin-top:30px}.mm .lg i{width:16px;height:16px}
+@media(max-width:900px){.mm .mc{flex-basis:calc((100% - 14px)/2)}}
+@media(max-width:560px){.mm .mc{flex-basis:100%}}
 </style>
 </head>
 <body>

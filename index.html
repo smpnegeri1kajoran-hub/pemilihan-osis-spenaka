@@ -69,7 +69,26 @@ let hide=false,present=false;try{hide=localStorage.getItem('osis_hide')==='1'}ca
 const KAT={putra:{t:'Siswa Laki-laki',c:'#2f6fe4'},putri:{t:'Siswa Perempuan',c:'#d6458a'},guru:{t:'Guru',c:'#12a37f'},karyawan:{t:'Karyawan',c:'#e08a00'},siswa:{t:'Siswa',c:'#7a86a6'}};
 const katOf=(g,jk)=>g==='Guru'?'guru':g==='Karyawan'?'karyawan':jk==='P'?'putri':jk==='L'?'putra':'siswa';
 const scan={on:false,stream:null,t:0,to:0,facing:'user',last:'',lastT:0,hint:''};
-if(MODE==='vote'&&window.visualViewport)visualViewport.addEventListener('resize',()=>{const a=document.activeElement;if(a&&a.id==='nid')setTimeout(()=>{a.scrollIntoView&&a.scrollIntoView({block:'center',behavior:'smooth'})},150)});
+if(MODE==='vote'){
+  /* sentuh di luar kolom isian / tombol -> logo & judul tampil lagi */
+  document.addEventListener('pointerdown',e=>{
+    if(!document.body.classList.contains('typing'))return;
+    if(e.target&&e.target.closest&&e.target.closest('#nid,.lc button'))return;
+    document.body.classList.remove('typing');
+    const a=document.activeElement;if(a&&a.id==='nid')a.blur();
+  },true);
+  /* papan ketik ditutup (tombol kembali) -> logo & judul tampil lagi */
+  if(window.visualViewport){
+    let vb=visualViewport.height,kbOpen=false;
+    visualViewport.addEventListener('resize',()=>{
+      const h=visualViewport.height,a=document.activeElement;
+      vb=Math.max(vb,h);
+      if(h<vb*0.8)kbOpen=true;
+      else if(kbOpen&&h>vb*0.9){kbOpen=false;document.body.classList.remove('typing')}
+      if(a&&a.id==='nid')setTimeout(()=>{a.scrollIntoView&&a.scrollIntoView({block:'center',behavior:'smooth'})},150);
+    });
+  }
+}
 const GROUPS=[];['7','8','9'].forEach(g=>'ABCDEFG'.split('').forEach(c=>GROUPS.push(g+c)));GROUPS.push('Guru','Karyawan');
 const S={voters:{},candidates:{},votes:{},active:{},open:false,ready:false};
 const CD={},COL=['#2457d6','#e08a00','#12a37f','#c0392b','#8e44ad','#16a2b8'];

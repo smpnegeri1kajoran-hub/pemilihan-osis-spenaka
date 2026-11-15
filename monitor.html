@@ -341,9 +341,9 @@ function monitorView(){
   const hint=(a,k)=>a.kat===undefined?'Tablet belum diperbarui (Ctrl+F5)':k==='siswa'&&a.group!=='Guru'&&a.group!=='Karyawan'?'JK siswa belum diisi':'';
   const card=a=>{const k=KAT[a.kat]?a.kat:katOf(a.group),K=KAT[k],c=K.c;
     return `<div class="card mc" style="border-top:6px solid ${c};background:color-mix(in srgb,${c} 10%,var(--card))">${a.bilik?`<div class="mut">Bilik ${esc(a.bilik)}</div>`:''}<div class="mn">${esc(a.name)}</div><div class="mut">${esc(a.group)}</div><span class="chip" style="color:color-mix(in srgb,${c} 62%,var(--tx));border-color:${c}">${K.t}</span><div class="mut" style="font-size:.8rem">Sedang memilih</div>${hint(a,k)?`<div class="mut" style="font-size:.72rem;opacity:.85">${hint(a,k)}</div>`:''}</div>`};
-  return `<header class="hd">${fsOk?'<button class="fsbtn" onclick="goFull()">⛶ Layar penuh</button>':''}<div class="logos"><img class="logo" src="logo.png" alt="" onerror="this.remove()"><img class="logo" src="kpu-osis.png" alt="" onerror="this.remove()"></div><h1>Pemilih yang Sedang Memilih</h1><div class="sch">SMP Negeri 1 Kajoran</div></header>
+  return `<header class="hd">${fsOk?'<button class="fsbtn" onclick="goFull()">⛶ Layar penuh</button>':''}<div class="logos"><img class="logo" src="logo.png" alt="" onerror="this.remove()"><img class="logo" src="kpu-osis.png" alt="" onerror="this.remove()"></div><h1>Pengguna yang sedang menggunakan hak pilihnya</h1><div class="sch">SMP Negeri 1 Kajoran</div></header>
   <div class="mon">${L.map(card).join('')}</div>
-  ${L.length?'':'<p class="mut c" style="margin-top:18px">Belum ada pemilih yang sedang memilih.</p>'}
+  ${L.length?'':'<p class="mut c" style="margin-top:18px">Belum ada pengguna yang sedang menggunakan hak pilihnya.</p>'}
   <div class="lg" style="justify-content:center;margin-top:24px">${['putra','putri','guru','karyawan'].map(k=>`<span><i style="background:${KAT[k].c}"></i>${KAT[k].t}</span>`).join('')}</div>`;
 }
 if(MODE==='monitor')setInterval(()=>render(true),10000);

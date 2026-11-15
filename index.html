@@ -364,7 +364,7 @@ function voteView(){
     <div class="row" style="justify-content:center"><button onclick="flipCam()">Ganti kamera</button><button onclick="cancelScan()">Batal</button></div></div>`;
   return `<div class="card lc"><h2>Masuk untuk memilih</h2><p class="mut">Masukkan NISN (siswa) atau NIP/ID (guru &amp; karyawan).</p>
     <div class="row"><input id="nid" inputmode="numeric" autocomplete="off" onfocus="if(window.matchMedia&&matchMedia('(pointer:coarse)').matches){document.body.classList.add('typing');var el=this;setTimeout(function(){el.scrollIntoView&&el.scrollIntoView({block:'center',behavior:'smooth'})},350)}" placeholder="NISN / NIP / ID" onkeydown="if(event.key==='Enter')doLogin()"><button class="p" onclick="doLogin()">Masuk</button></div>
-    ${navigator.mediaDevices?'<div style="margin-top:10px"><button onclick="startScan()">Pindai kartu (QR)</button></div>':''}
+    ${navigator.mediaDevices?'<div class="mut" style="margin:12px 0 4px">atau</div><div><button onclick="startScan()">Pindai kartu (QR Code)</button></div>':''}
     ${V.msg?`<p class="err">${esc(V.msg)}</p>`:''}</div>`;
 }
 function adminView(){

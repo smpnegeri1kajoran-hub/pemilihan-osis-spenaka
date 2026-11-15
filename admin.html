@@ -51,6 +51,14 @@ button.d{color:var(--err)}button:disabled{opacity:.4;cursor:not-allowed}
 .vc .ft{font-size:6pt;text-align:center;border-top:1px solid #aaa;padding-top:1mm}.vc .ft{color:#444}
 .vc .mid{flex:1;display:flex;align-items:center;gap:3mm;min-height:0}.vc .mid .bd{flex:1;min-width:0}.vc .qr{flex:0 0 22mm;width:22mm;height:22mm;background:#fff}.vc .qr svg{width:100%;height:100%;display:block}
 .rpt .nar p{text-align:justify;margin:8px 0 0;line-height:1.5}
+.ctl{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);right:10px;z-index:30;display:flex;gap:8px}.ctl button{min-height:36px;padding:6px 12px;font-size:.85rem;opacity:.7}.ctl button:hover{opacity:1}
+.cdn{font-size:clamp(9rem,34vw,26rem);font-weight:900;line-height:1;color:var(--pri);animation:pop .9s ease-out}
+.ban{font-size:clamp(1.2rem,3vw,2.2rem);font-weight:800;color:#d99a00;margin:6px 0}.ban2{font-size:clamp(1.1rem,2.4vw,1.6rem);font-weight:700;margin:6px 0}
+.pc.win{box-shadow:0 0 0 3px #f5b82e,0 0 30px rgba(245,184,46,.55)}
+@keyframes pop{0%{transform:scale(.4);opacity:0}25%{transform:scale(1.12);opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes rise{from{opacity:0;transform:translateY(30px) scale(.96)}to{opacity:1;transform:none}}
+.anim .pc{animation:rise .7s ease both}.anim .pc:nth-child(2){animation-delay:.2s}.anim .pc:nth-child(3){animation-delay:.4s}.anim .pc:nth-child(4){animation-delay:.6s}.anim .ban{animation:pop .9s ease-out}
+@media (prefers-reduced-motion:reduce){.cdn,.anim .pc,.anim .ban{animation:none}}
 </style>
 </head>
 <body>
@@ -81,7 +89,7 @@ if(MODE==='vote'&&fsOk){
   ['pointerdown','pointerup','keydown'].forEach(ev=>document.addEventListener(ev,()=>{if(!isFs())goFull()},true));
   document.addEventListener('fullscreenchange',syncFs);document.addEventListener('webkitfullscreenchange',syncFs);syncFs();
 }
-let hide=false,present=false;try{hide=localStorage.getItem('osis_hide')==='1'}catch(e){}
+let hide=false,present=false,PH='ready',CNT=10,DUR=10,cdTimer=0,rv=false;try{hide=localStorage.getItem('osis_hide')==='1'}catch(e){}
 const GROUPS=[];['7','8','9'].forEach(g=>'ABCDEFG'.split('').forEach(c=>GROUPS.push(g+c)));GROUPS.push('Guru','Karyawan');
 const S={voters:{},candidates:{},votes:{},open:false,ready:false};
 const CD={},COL=['#2457d6','#e08a00','#12a37f','#c0392b','#8e44ad','#16a2b8'];
@@ -266,9 +274,9 @@ function render(force){
   const a=document.activeElement;
   if(!force&&a&&$('app').contains(a)&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;
   if(!configured){$('app').innerHTML='<div class="card"><h2>Belum dikonfigurasi</h2><p>Isi konfigurasi Firebase di <code>index.html</code> (lihat README.md).</p></div>';return}
-  const open=S.open?'<span class="chip on">PEMILIHAN DIBUKA</span>':'<span class="chip off">PEMILIHAN DITUTUP</span>';
+  const open=S.open?'<span class="chip on">Pemilihan DIBUKA</span>':'<span class="chip off">Pemilihan DITUTUP</span>';
   const A=MODE==='admin',btn='';
-  if(present&&S.open)present=false;
+  if(present&&S.open){present=false;clearInterval(cdTimer);stopFx()}
   const pm=A&&admin&&present;document.body.classList.toggle('pm',pm);
   if(pm){$('app').innerHTML=presentView();return}
   const head=A?`<header><h1>Panel Admin – Pemilihan OSIS</h1><div class="row" style="flex:0 1 auto">${open}${btn}</div></header>`
@@ -318,8 +326,8 @@ function leadTag(cs,t){
   return id=>{const n=t[id]||0;if(!m||n!==m)return '';return k>1?'<span class="chip sr">Seri</span>':'<span class="chip on">Unggul</span>'};
 }
 function toggleHide(){hide=!hide;try{localStorage.setItem('osis_hide',hide?'1':'0')}catch(e){}render(true)}
-function startPresent(){if(S.open)return;present=true;goFull();render(true)}
-function stopPresent(){present=false;try{const f=document.exitFullscreen||document.webkitExitFullscreen;if(f&&isFs()){const r=f.call(document);if(r&&r.catch)r.catch(()=>{})}}catch(e){}render(true)}
+function startPresent(){if(S.open)return;present=true;PH='ready';clearInterval(cdTimer);stopFx();goFull();render(true)}
+function stopPresent(){present=false;clearInterval(cdTimer);stopFx();try{const f=document.exitFullscreen||document.webkitExitFullscreen;if(f&&isFs()){const r=f.call(document);if(r&&r.catch)r.catch(()=>{})}}catch(e){}render(true)}
 function liveTab(){
   const vs=Object.values(S.voters),done=vs.filter(v=>v.voted).length,t=tally(),total=Object.keys(S.votes).length,cs=sorted(),tag=leadTag(cs,t);
   const results=hide?`<div class="card c"><h2>Hasil disembunyikan</h2><p class="mut">Perolehan suara tidak ditampilkan di layar ini. Tekan "Tampilkan hasil" untuk melihatnya.</p></div>`
@@ -330,12 +338,52 @@ function liveTab(){
   ${results}
   <div class="card"><h2>Partisipasi per kelas</h2><div class="tw"><table><tr><th>Kelompok</th><th class="c">Terdaftar</th><th class="c">Memilih</th><th class="c">%</th></tr>${GROUPS.map(g=>{const a=vs.filter(v=>v.group===g),d=a.filter(v=>v.voted).length;return `<tr><td>${g}</td><td class="c">${a.length}</td><td class="c">${d}</td><td class="c">${a.length?Math.round(d/a.length*100):0}%</td></tr>`}).join('')}</table></div></div>`;
 }
+function setDur(v){DUR=+v||10;render(true)}
+function startCount(){clearInterval(cdTimer);stopFx();CNT=DUR;PH='count';render(true);cdTimer=setInterval(()=>{CNT--;if(CNT<=0){clearInterval(cdTimer);reveal()}else render(true)},1000)}
+function skipCount(){clearInterval(cdTimer);reveal()}
+function reveal(){PH='show';rv=true;setTimeout(()=>{rv=false},2500);render(true);celebrate()}
+function celebrate(){
+  const cs=sorted(),t=tally(),m=Math.max(0,...cs.map(([id])=>t[id]||0));
+  if(cs.filter(([id])=>m>0&&(t[id]||0)===m).length!==1)return;
+  if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  startFx();
+}
+const fx={raf:0,run:false};
+function stopFx(){fx.run=false;if(window.cancelAnimationFrame)cancelAnimationFrame(fx.raf);const e=document.getElementById('fx');if(e)e.remove()}
+function startFx(){
+  stopFx();
+  const cv=document.createElement('canvas');cv.id='fx';cv.style.cssText='position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:20';
+  document.body.appendChild(cv);const c=cv.getContext('2d');if(!c)return;
+  const dpr=Math.min(2,window.devicePixelRatio||1);cv.width=Math.round(innerWidth*dpr);cv.height=Math.round(innerHeight*dpr);
+  const COLS=['#ff595e','#ffca3a','#8ac926','#1982c4','#6a4c93','#ff9f1c','#2ec4b6'],conf=[];let parts=[];
+  for(let i=0;i<220;i++)conf.push({x:Math.random()*cv.width,y:-Math.random()*cv.height*.6,w:(6+Math.random()*8)*dpr,h:(10+Math.random()*10)*dpr,vx:(Math.random()-.5)*2*dpr,vy:(2+Math.random()*3)*dpr,r:Math.random()*6,vr:(Math.random()-.5)*.3,c:COLS[i%COLS.length]});
+  const burst=(x,y)=>{const col=COLS[(Math.random()*COLS.length)|0];for(let i=0;i<70;i++){const a=Math.PI*2*i/70+Math.random()*.1,sp=(2+Math.random()*4)*dpr;parts.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,c:Math.random()<.7?col:'#fff'})}};
+  const DURFX=11000;let t0=0,last=0,nextFw=0;fx.run=true;
+  const frame=now=>{
+    if(!fx.run)return;if(!t0){t0=now;last=now}
+    const dt=Math.min(40,now-last)/16.67,el=now-t0;last=now;
+    c.clearRect(0,0,cv.width,cv.height);
+    if(el<DURFX-3000&&now>=nextFw){burst((.15+Math.random()*.7)*cv.width,(.1+Math.random()*.4)*cv.height);nextFw=now+450+Math.random()*500}
+    parts=parts.filter(p=>p.life>0);
+    for(const p of parts){p.vy+=.05*dpr*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.992;p.life-=.012*dt;c.globalAlpha=Math.max(0,p.life);c.fillStyle=p.c;c.beginPath();c.arc(p.x,p.y,2.2*dpr,0,7);c.fill()}
+    c.globalAlpha=1;
+    for(const q of conf){q.x+=q.vx*dt;q.y+=q.vy*dt;q.r+=q.vr*dt;if(el<DURFX-3000&&q.y>cv.height+20){q.y=-20;q.x=Math.random()*cv.width}c.save();c.translate(q.x,q.y);c.rotate(q.r);c.fillStyle=q.c;c.fillRect(-q.w/2,-q.h/2,q.w,q.h);c.restore()}
+    if(el>DURFX&&!parts.length&&conf.every(q=>q.y>cv.height+20)){stopFx();return}
+    fx.raf=requestAnimationFrame(frame);
+  };
+  fx.raf=requestAnimationFrame(frame);
+}
 function presentView(){
   const cs=sorted(),t=tally(),total=Object.keys(S.votes).length,vs=Object.values(S.voters),done=vs.filter(v=>v.voted).length,tag=leadTag(cs,t),cols=cs.length<=3?Math.max(cs.length,1):cs.length===4?2:3;
-  return `<button class="xbtn" onclick="stopPresent()">✕ Keluar layar tayang</button>
-  <div class="pres"><div class="logos"><img class="logo" src="logo.png" alt="" onerror="this.remove()"><img class="logo" src="kpu-osis.png" alt="" onerror="this.remove()"></div>
-  <h1 style="font-size:clamp(1.4rem,3.4vw,2.4rem);margin:0">Hasil Pemilihan Ketua OSIS dan Wakil Ketua OSIS</h1><div class="sch">SMP Negeri 1 Kajoran</div>
-  <div class="pg c${cols}" style="margin-top:8px">${cs.map(([id,c],i)=>{const n=t[id]||0,pc=total?Math.round(n/total*100):0;return `<div class="card pc" style="border-color:${COL[i%6]};border-width:2px">${img(c,'photo')}<div class="big" style="color:${tc(i)};font-weight:700">Paslon No ${esc(c.no)} ${tag(id)}</div><div><b>${esc(c.name)}</b>${c.wakil?'<br><b>'+esc(c.wakil)+'</b>':''}</div><div class="pnum" style="margin-top:8px">${n}</div><div class="mut" style="margin-bottom:8px">suara · ${pc}%</div><div class="bar"><i style="width:${pc}%;background:${COL[i%6]}"></i></div></div>`}).join('')}</div>
+  const m=Math.max(0,...cs.map(([id])=>t[id]||0)),tops=cs.filter(([id])=>m>0&&(t[id]||0)===m),one=tops.length===1?tops[0]:null;
+  const ctl=`<div class="ctl">${PH==='show'?'<button onclick="startCount()">↻ Ulangi hitung mundur</button>':PH==='count'?'<button onclick="skipCount()">Lewati »</button>':''}<button onclick="stopPresent()">✕ Keluar layar tayang</button></div>`;
+  const logos=`<div class="logos"><img class="logo" src="logo.png" alt="" onerror="this.remove()"><img class="logo" src="kpu-osis.png" alt="" onerror="this.remove()"></div>`;
+  const h1=x=>`<h1 style="font-size:clamp(1.4rem,3.4vw,2.4rem);margin:0">${x}</h1><div class="sch">SMP Negeri 1 Kajoran</div>`;
+  if(PH==='ready')return ctl+`<div class="pres">${logos}${h1('Pengumuman Hasil Pemilihan Ketua OSIS dan Wakil Ketua OSIS')}<p class="mut" style="font-size:1.2rem;margin:8px 0">Pemungutan suara telah ditutup.${vs.length?' '+done+' dari '+vs.length+' pemilih telah menggunakan hak pilihnya.':''}</p><div style="display:flex;gap:14px;justify-content:center;align-items:center;flex-wrap:wrap"><label class="mut">Hitung mundur <select onchange="setDur(this.value)" style="width:auto;padding:8px">${[5,10,15,30].map(x=>`<option value="${x}" ${DUR===x?'selected':''}>${x} detik</option>`).join('')}</select></label><button class="p" style="font-size:1.5rem;padding:16px 30px" onclick="startCount()">Mulai hitung mundur</button></div></div>`;
+  if(PH==='count')return ctl+`<div class="pres">${logos}${h1('Pengumuman Hasil Pemilihan Ketua OSIS dan Wakil Ketua OSIS')}<div class="mut" style="font-size:clamp(1.1rem,2.4vw,1.8rem)">Hasil akan diumumkan dalam</div><div class="cdn">${CNT}</div></div>`;
+  const ban=!total?'<div class="ban2">Belum ada suara yang masuk.</div>':one?`<div class="ban">🎉 Selamat kepada Paslon No ${esc(one[1].no)} – ${esc(one[1].name)}${one[1].wakil?' &amp; '+esc(one[1].wakil):''} 🎉</div>`:'<div class="ban2">Perolehan suara tertinggi seri. Keputusan selanjutnya ditentukan oleh panitia.</div>';
+  return ctl+`<div class="pres ${rv?'anim':''}">${logos}${h1('Hasil Pemilihan Ketua OSIS dan Wakil Ketua OSIS')}${ban}
+  <div class="pg c${cols}" style="margin-top:8px">${cs.map(([id,c],i)=>{const n=t[id]||0,pc=total?Math.round(n/total*100):0,w=one&&one[0]===id;return `<div class="card pc${w?' win':''}" style="border-color:${COL[i%6]};border-width:2px">${img(c,'photo')}<div class="big" style="color:${tc(i)};font-weight:700">Paslon No ${esc(c.no)} ${tag(id)}</div><div><b>${esc(c.name)}</b>${c.wakil?'<br><b>'+esc(c.wakil)+'</b>':''}</div><div class="pnum" style="margin-top:8px">${n}</div><div class="mut" style="margin-bottom:8px">suara · ${pc}%</div><div class="bar"><i style="width:${pc}%;background:${COL[i%6]}"></i></div></div>`}).join('')}</div>
   <p class="mut">Total ${total} suara masuk dari ${vs.length} pemilih terdaftar (partisipasi ${vs.length?Math.round(done/vs.length*100):0}%)</p></div>`;
 }
 function votersTab(){
@@ -487,7 +535,7 @@ function ctrlTab(){
   <div class="card"><h2>Reset</h2><p class="mut">Menghapus semua suara dan status memilih. Gunakan hanya untuk uji coba sebelum hari-H.</p><button class="d" onclick="resetAll()">${armed?'Klik lagi untuk konfirmasi reset':'Reset semua suara'}</button></div>`;
 }
 
-Object.assign(window,{doLogin,submitVote,adminLogin,logout,addVoter,bulkAdd,addCand,setOpen,delDoc,resetAll,exportVoters,tog,render,exportRekap,RK,saveRK,K,cardOf,cardsFromFilter,setJk,editVoter,cancelED,saveED,ED,F,resetF,goFull,toggleHide,startPresent,stopPresent,CD,importExcel,template,pickPhoto,editCand,cancelCD,
+Object.assign(window,{doLogin,submitVote,adminLogin,logout,addVoter,bulkAdd,addCand,setOpen,delDoc,resetAll,exportVoters,tog,render,exportRekap,RK,saveRK,K,cardOf,cardsFromFilter,setJk,editVoter,cancelED,saveED,ED,F,resetF,goFull,toggleHide,startPresent,stopPresent,startCount,skipCount,setDur,CD,importExcel,template,pickPhoto,editCand,cancelCD,
   pick:id=>{V.sel=id;render(true)},cancelV:()=>{V={stage:'login'};render(true)}});
 Object.defineProperties(window,{
   view:{get:()=>view,set:v=>{view=v},configurable:true},

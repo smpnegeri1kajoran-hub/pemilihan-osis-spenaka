@@ -50,6 +50,7 @@ button.d{color:var(--err)}button:disabled{opacity:.4;cursor:not-allowed}
 .vc .bd .k{color:#444}.vc .bd .v{font-weight:700}.vc .bd .id{font-size:13pt;letter-spacing:.08em}
 .vc .ft{font-size:6pt;text-align:center;border-top:1px solid #aaa;padding-top:1mm}.vc .ft{color:#444}
 .vc .mid{flex:1;display:flex;align-items:center;gap:3mm;min-height:0}.vc .mid .bd{flex:1;min-width:0}.vc .qr{flex:0 0 22mm;width:22mm;height:22mm;background:#fff}.vc .qr svg{width:100%;height:100%;display:block}
+.rpt .nar p{text-align:justify;margin:8px 0 0;line-height:1.5}
 </style>
 </head>
 <body>
@@ -391,6 +392,36 @@ function recap(){
     warn:total!==used?`Catatan: jumlah suara masuk (${total}) tidak sama dengan jumlah pemilih yang tercatat sudah memilih (${used}). Periksa sebelum mencetak.`:'',
     sum:[['Status pemilihan',S.open?'Masih dibuka':'Sudah ditutup'],['Jumlah pemilih terdaftar',dpt],['Suara digunakan (sudah memilih)',used],['Suara tidak digunakan (belum memilih)',unused],['Persentase partisipasi',pct(used,dpt)],['Persentase tidak memilih',pct(unused,dpt)],['Suara sah',total],['Suara tidak sah',0]]};
 }
+const RK={tempat:'',tgl:''};try{Object.assign(RK,JSON.parse(localStorage.getItem('osis_rk')||'{}'))}catch(e){}
+function saveRK(){try{localStorage.setItem('osis_rk',JSON.stringify(RK))}catch(e){}render(true)}
+const HARI=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'],BLN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+function terbilang(n){
+  const a=['','satu','dua','tiga','empat','lima','enam','tujuh','delapan','sembilan','sepuluh','sebelas'];n=Math.floor(n);
+  if(n<12)return a[n];
+  if(n<20)return terbilang(n-10)+' belas';
+  if(n<100)return terbilang(Math.floor(n/10))+' puluh'+(n%10?' '+terbilang(n%10):'');
+  if(n<200)return 'seratus'+(n>100?' '+terbilang(n-100):'');
+  if(n<1000)return terbilang(Math.floor(n/100))+' ratus'+(n%100?' '+terbilang(n%100):'');
+  if(n<2000)return 'seribu'+(n>1000?' '+terbilang(n-1000):'');
+  if(n<1e6)return terbilang(Math.floor(n/1000))+' ribu'+(n%1000?' '+terbilang(n%1000):'');
+  return String(n);
+}
+const tb=n=>n===0?'nol':terbilang(n);
+function narasi(R){
+  const z=n=>String(n).padStart(2,'0'),jam=t=>z(new Date(t).getHours())+'.'+z(new Date(t).getMinutes()),dmy=t=>{const x=new Date(t);return z(x.getDate())+'-'+z(x.getMonth()+1)+'-'+x.getFullYear()};
+  let d;
+  if(/^\d{4}-\d{2}-\d{2}$/.test(RK.tgl||'')){const [y,m,dd]=RK.tgl.split('-').map(Number);d=new Date(y,m-1,dd)}else d=new Date(R.first||Date.now());
+  const sameDay=R.first&&R.last&&new Date(R.first).toDateString()===new Date(R.last).toDateString();
+  const tgl=`<b>${HARI[d.getDay()]}</b>, tanggal <b>${terbilang(d.getDate())}</b> bulan <b>${BLN[d.getMonth()]}</b> tahun <b>${terbilang(d.getFullYear())}</b> (${dmy(d)})`;
+  const tmp=esc(RK.tempat||'SMP Negeri 1 Kajoran'),w1=R.first?jam(R.first):'........',w2=R.last?jam(R.last):'........';
+  const waktu=S.open?`pukul ${jam(Date.now())} WIB`:(sameDay||!R.first)?`pukul ${w1} WIB sampai dengan pukul ${w2} WIB`:`pukul ${w1} WIB sampai dengan tanggal ${dmy(R.last)} pukul ${w2} WIB`;
+  const n=x=>`<b>${x}</b> (${tb(x)})`;
+  const a=S.open
+    ?`Pada hari ini, ${tgl}, ${waktu}, bertempat di <b>${tmp}</b>, pemungutan suara pemilihan Ketua OSIS dan Wakil Ketua OSIS SMP Negeri 1 Kajoran yang diselenggarakan oleh Komisi Pemilihan OSIS (KPU OSIS) secara elektronik <b>masih berlangsung</b>. Rekapitulasi di bawah ini merupakan <b>hasil sementara</b>.`
+    :`Pada hari ini, ${tgl}, ${waktu}, bertempat di <b>${tmp}</b>, Komisi Pemilihan OSIS (KPU OSIS) SMP Negeri 1 Kajoran telah melaksanakan pemungutan suara pemilihan Ketua OSIS dan Wakil Ketua OSIS secara elektronik, dengan pemilih yang terdiri atas siswa, guru, dan karyawan.`;
+  const b=`Berdasarkan daftar pemilih, jumlah pemilih terdaftar sebanyak ${n(R.dpt)} orang. Dari jumlah tersebut, pemilih yang ${S.open?'telah ':''}menggunakan hak pilihnya sebanyak ${n(R.used)} orang (${R.pct(R.used,R.dpt)}) dan yang ${S.open?'belum':'tidak'} menggunakan hak pilihnya sebanyak ${n(R.unused)} orang (${R.pct(R.unused,R.dpt)}). Jumlah suara sah sebanyak ${n(R.total)} suara dan suara tidak sah sebanyak <b>0</b> (nol) suara. Adapun perolehan suara masing-masing pasangan calon adalah sebagai berikut:`;
+  return `<div class="nar"><p>${a}</p><p>${b}</p></div>`;
+}
 function rekapTab(){
   if(hide)return `<div class="rptwrap"><div class="card c"><h2>Hasil disembunyikan</h2><p class="mut">Rekap memuat perolehan suara. Tekan "Tampilkan hasil" untuk membukanya.</p><button class="p" onclick="toggleHide()">Tampilkan hasil</button></div></div>`;
   const R=recap(),pc=R.pct;
@@ -398,10 +429,12 @@ function rekapTab(){
   const gh=[['Kelas'],['Terdaftar',1],['Memilih',1],['Tidak',1],['%',1]],gr=x=>[x.l,x.n,x.u,x.n-x.u,pc(x.u,x.n)];
   const half=Math.ceil(R.grp.length/2),g1=R.grp.slice(0,half),g2=R.grp.slice(half);
   const cr=R.cand.map(x=>{const r=[esc(x.c.no),String(x.c.photo||'').startsWith('data:image/')?`<img class="rp" src="${x.c.photo}" alt="">`:'–',esc(x.c.name),esc(x.c.wakil||'-'),x.n,x.p,x.rank];if(x.rank===1&&x.n>0)r.cls='win';return r});
-  return `<div class="rptwrap"><div class="row noprint" style="justify-content:flex-end;margin-bottom:12px"><button class="p" onclick="window.print()">Cetak / Simpan PDF</button><button onclick="exportRekap()">Unduh Excel</button></div>
+  return `<div class="rptwrap"><div class="card noprint"><h2>Narasi pembuka</h2><div class="row"><input placeholder="Tempat pelaksanaan (contoh: Aula SMP Negeri 1 Kajoran)" value="${esc(RK.tempat)}" onchange="RK.tempat=this.value;saveRK()"><input type="date" value="${esc(RK.tgl)}" onchange="RK.tgl=this.value;saveRK()"></div><p class="mut" style="margin:8px 0 0">Tempat kosong = "SMP Negeri 1 Kajoran". Tanggal kosong = tanggal suara pertama masuk. Jam mulai dan selesai diambil otomatis dari suara pertama dan terakhir.</p></div>
+  <div class="row noprint" style="justify-content:flex-end;margin-bottom:12px"><button class="p" onclick="window.print()">Cetak / Simpan PDF</button><button onclick="exportRekap()">Unduh Excel</button></div>
   ${R.warn?`<p class="err noprint">${R.warn}</p>`:''}
   <div class="rpt"><div class="lgs"><img src="logo.png" alt="" onerror="this.remove()"><img src="kpu-osis.png" alt="" onerror="this.remove()"></div>
   <h1>REKAPITULASI HASIL PEMILIHAN<br>KETUA OSIS DAN WAKIL KETUA OSIS</h1><div class="sc"><b>SMP Negeri 1 Kajoran</b></div><div class="sc">Dicetak pada ${R.tgl}${S.open?' · <b>HASIL SEMENTARA</b>':''}</div>
+  ${narasi(R)}
   <div class="cols"><div><h3>Ringkasan pemilih</h3>${T([['Keterangan'],['Jumlah',1]],R.sum.map(x=>[x[0],x[1]]))}</div>
   <div><h3>Rekap per kategori</h3>${T([['Kategori'],['Terdaftar',1],['Memilih',1],['Belum',1],['%',1]],R.kat.map(x=>[x.l,x.n,x.u,x.n-x.u,pc(x.u,x.n)]))}</div></div>
   <h3>Perolehan suara pasangan calon</h3>${T([['No',1],['Foto'],['Calon Ketua'],['Calon Wakil'],['Suara',1],['% suara sah',1],['Peringkat',1]],cr,['','','','Total suara sah',R.total,R.total?'100%':'0%',''])}
@@ -454,7 +487,7 @@ function ctrlTab(){
   <div class="card"><h2>Reset</h2><p class="mut">Menghapus semua suara dan status memilih. Gunakan hanya untuk uji coba sebelum hari-H.</p><button class="d" onclick="resetAll()">${armed?'Klik lagi untuk konfirmasi reset':'Reset semua suara'}</button></div>`;
 }
 
-Object.assign(window,{doLogin,submitVote,adminLogin,logout,addVoter,bulkAdd,addCand,setOpen,delDoc,resetAll,exportVoters,tog,render,exportRekap,K,cardOf,cardsFromFilter,setJk,editVoter,cancelED,saveED,ED,F,resetF,goFull,toggleHide,startPresent,stopPresent,CD,importExcel,template,pickPhoto,editCand,cancelCD,
+Object.assign(window,{doLogin,submitVote,adminLogin,logout,addVoter,bulkAdd,addCand,setOpen,delDoc,resetAll,exportVoters,tog,render,exportRekap,RK,saveRK,K,cardOf,cardsFromFilter,setJk,editVoter,cancelED,saveED,ED,F,resetF,goFull,toggleHide,startPresent,stopPresent,CD,importExcel,template,pickPhoto,editCand,cancelCD,
   pick:id=>{V.sel=id;render(true)},cancelV:()=>{V={stage:'login'};render(true)}});
 Object.defineProperties(window,{
   view:{get:()=>view,set:v=>{view=v},configurable:true},

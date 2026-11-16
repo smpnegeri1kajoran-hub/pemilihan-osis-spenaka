@@ -71,6 +71,24 @@ button.d{color:var(--err)}button:disabled{opacity:.4;cursor:not-allowed}
 .pres.show .pc .mut{margin-bottom:4px!important}.pres.show .pc .bar{height:16px}
 .pres.show .tot{position:fixed;left:0;right:0;bottom:0;margin:0;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));text-align:center;background:var(--bg);border-top:1px solid var(--bd);z-index:15;font-size:1rem}
 @media (max-height:820px){.pres.show{padding-top:40px;gap:3px}.pres.show .logos img{height:40px}.pres.show .sch{display:none}.pres.show .pc.win .photo{max-height:25vh}.pres.show .has-win .pc:not(.win) .photo{max-height:16vh}.pres.show .pc:not(.win) .photo{max-height:20vh}.pres.show .pc{padding:8px 10px}.pres.show .pc.win .pnum{font-size:clamp(2.4rem,5.5vw,3.8rem)}.pres.show .pc:not(.win) .pnum{font-size:clamp(1.5rem,3.4vw,2.2rem)}.pres.show .ban{font-size:clamp(1rem,2vw,1.4rem)}}
+.rpt .sig .nm{text-decoration:underline}
+.pres.show{height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));box-sizing:border-box;padding-bottom:66px}
+.pres.show .pg{margin-top:8px}
+.pres.show .pg.fit{flex:1 1 0;min-height:0;margin-top:13px;width:100%;grid-template-rows:minmax(0,1fr)}
+.pres.show .pg.fit .pc{display:flex;flex-direction:column;height:84%;min-height:0;padding:10px 12px}
+.pres.show .pg.fit .pc.win{height:100%}
+.pres.show .pg.fit .pc .photo{flex:1 1 0!important;min-height:0!important;max-height:none!important;height:auto;width:100%;margin-bottom:6px}
+.pres.show .pg.fit .pc .photo.ph{min-height:80px!important}
+.pm .w{padding-top:0;padding-bottom:0}
+@media (max-height:820px){.pres.show .pg.fit{margin-top:16px}}
+.rpt .cols3,.rpt .cols4{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}.rpt .cols3>div{flex:1 1 230px;min-width:0}.rpt .cols4>div{flex:1 1 150px;min-width:0}
+@media print{
+.rpt{font-size:10.5px}.rpt .lgs{margin-bottom:2px}.rpt .lgs img{height:44px}.rpt h1 br.pb{display:none}.rpt h1{font-size:13px;margin:2px 0}
+.rpt h3{margin:8px 0 3px;font-size:10.5px}.rpt th,.rpt td{padding:1.5px 4px}.rpt .nar p{margin:5px 0 0;line-height:1.35}
+.rpt .cols3,.rpt .cols4{flex-wrap:nowrap;gap:8px}.rpt .cols3>div:nth-child(1){flex:1.1 1 0}.rpt .cols3>div:nth-child(2){flex:1.3 1 0}.rpt .cols3>div:nth-child(3){flex:.85 1 0}.rpt .cols4>div{flex:1 1 0}
+.rpt .cols4 table{table-layout:fixed;width:100%}.rpt .cols4 th:first-child,.rpt .cols4 td:first-child{width:28%}
+.rpt .rp{width:30px;height:30px}.rpt .sig{margin-top:12px}.rpt .sig .ln{height:38px}.rpt .nt{margin:4px 0 0}
+}
 </style>
 </head>
 <body>
@@ -395,7 +413,7 @@ function presentView(){
   if(PH==='count')return ctl+`<div class="pres">${logos}${h1('Pengumuman Hasil Pemilihan Ketua OSIS dan Wakil Ketua OSIS')}<div class="mut" style="font-size:clamp(1.1rem,2.4vw,1.8rem)">Hasil akan diumumkan dalam</div><div class="cdn">${CNT}</div></div>`;
   const ban=!total?'<div class="ban2">Belum ada suara yang masuk.</div>':one?`<div class="ban">🎉 Selamat kepada Paslon No ${esc(one[1].no)} – ${esc(one[1].name)}${one[1].wakil?' &amp; '+esc(one[1].wakil):''} 🎉</div>`:'<div class="ban2">Perolehan suara tertinggi seri. Keputusan selanjutnya ditentukan oleh panitia.</div>';
   return ctl+`<div class="pres show ${rv?'anim':''}">${logos}${h1('Hasil Pemilihan Ketua OSIS dan Wakil Ketua OSIS')}${ban}
-  <div class="pg c${cols}${one?' has-win':''}${cs.length>6?' wide':''}" style="margin-top:8px;${cs.length&&cs.length<=6?`grid-template-columns:${cs.map(([id])=>one&&one[0]===id?'1.5fr':'1fr').join(' ')};align-items:center`:''}">${cs.map(([id,c],i)=>{const n=t[id]||0,pc=total?Math.round(n/total*100):0,w=one&&one[0]===id;return `<div class="card pc${w?' win':''}" style="border-color:${COL[i%6]};border-width:2px">${img(c,'photo')}<div class="big" style="color:${tc(i)};font-weight:700">Paslon No ${esc(c.no)} ${tag(id)}</div><div><b>${esc(c.name)}</b>${c.wakil?' &amp; <b>'+esc(c.wakil)+'</b>':''}</div><div class="pnum" style="margin-top:4px">${n}</div><div class="mut" style="margin-bottom:8px">suara · ${pc}%</div><div class="bar"><i style="width:${pc}%;background:${COL[i%6]}"></i></div></div>`}).join('')}</div>
+  <div class="pg c${cols}${one?' has-win':''}${cs.length>6?' wide':''}${cs.length&&cs.length<=6?' fit':''}" style="${cs.length&&cs.length<=6?`grid-template-columns:${cs.map(([id])=>one&&one[0]===id?'1.5fr':'1fr').join(' ')};align-items:center`:''}">${cs.map(([id,c],i)=>{const n=t[id]||0,pc=total?Math.round(n/total*100):0,w=one&&one[0]===id;return `<div class="card pc${w?' win':''}" style="border-color:${COL[i%6]};border-width:2px">${img(c,'photo')}<div class="big" style="color:${tc(i)};font-weight:700">Paslon No ${esc(c.no)} ${tag(id)}</div><div><b>${esc(c.name)}</b>${c.wakil?' &amp; <b>'+esc(c.wakil)+'</b>':''}</div><div class="pnum" style="margin-top:4px">${n}</div><div class="mut" style="margin-bottom:8px">suara · ${pc}%</div><div class="bar"><i style="width:${pc}%;background:${COL[i%6]}"></i></div></div>`}).join('')}</div>
   <p class="mut tot">Total ${total} suara masuk dari ${vs.length} pemilih terdaftar (partisipasi ${vs.length?Math.round(done/vs.length*100):0}%)</p></div>`;
 }
 function votersTab(){
@@ -452,7 +470,7 @@ function recap(){
     warn:total!==used?`Catatan: jumlah suara masuk (${total}) tidak sama dengan jumlah pemilih yang tercatat sudah memilih (${used}). Periksa sebelum mencetak.`:'',
     sum:[['Status pemilihan',S.open?'Masih dibuka':'Sudah ditutup'],['Jumlah pemilih terdaftar',dpt],['Suara digunakan (sudah memilih)',used],['Suara tidak digunakan (belum memilih)',unused],['Persentase partisipasi',pct(used,dpt)],['Persentase tidak memilih',pct(unused,dpt)],['Suara sah',total],['Suara tidak sah',0]]};
 }
-const RK={tempat:'',tgl:''};try{Object.assign(RK,JSON.parse(localStorage.getItem('osis_rk')||'{}'))}catch(e){}
+const RK={tempat:'',tgl:'',pembina:'',ketua:''};try{Object.assign(RK,JSON.parse(localStorage.getItem('osis_rk')||'{}'))}catch(e){}
 function saveRK(){try{localStorage.setItem('osis_rk',JSON.stringify(RK))}catch(e){}render(true)}
 const HARI=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'],BLN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 function terbilang(n){
@@ -486,27 +504,31 @@ function rekapTab(){
   if(hide)return `<div class="rptwrap"><div class="card c"><h2>Hasil disembunyikan</h2><p class="mut">Rekap memuat perolehan suara. Tekan "Tampilkan hasil" untuk membukanya.</p><button class="p" onclick="toggleHide()">Tampilkan hasil</button></div></div>`;
   const R=recap(),pc=R.pct;
   const T=(head,rows,tot)=>`<table><tr>${head.map(h=>`<th class="${h[1]?'n':''}">${h[0]}</th>`).join('')}</tr>${rows.map(r=>`<tr class="${r.cls||''}">${r.map((x,i)=>`<td class="${head[i][1]?'n':''}">${x}</td>`).join('')}</tr>`).join('')}${tot?`<tr class="tot">${tot.map((x,i)=>`<td class="${head[i][1]?'n':''}">${x}</td>`).join('')}</tr>`:''}</table>`;
-  const gh=[['Kelas'],['Terdaftar',1],['Memilih',1],['Tidak',1],['%',1]],gr=x=>[x.l,x.n,x.u,x.n-x.u,pc(x.u,x.n)];
-  const half=Math.ceil(R.grp.length/2),g1=R.grp.slice(0,half),g2=R.grp.slice(half);
+  const gh=[['Kelas'],['Daftar',1],['Pilih',1],['%',1]],gr=x=>[x.l,x.n,x.u,pc(x.u,x.n)];
+  const hm=t=>{const d=new Date(t);return String(d.getHours()).padStart(2,'0')+'.'+String(d.getMinutes()).padStart(2,'0')};
+  const sh={'Jumlah pemilih terdaftar':'Pemilih terdaftar','Suara digunakan (sudah memilih)':'Suara digunakan','Suara tidak digunakan (belum memilih)':'Suara tidak digunakan','Persentase partisipasi':'Partisipasi','Persentase tidak memilih':'Tidak memilih'};
+  const isCls=x=>/^\d[A-Z]$/.test(x.l),blocks=[R.grp.filter(x=>isCls(x)&&x.l[0]==='7'),R.grp.filter(x=>isCls(x)&&x.l[0]==='8'),R.grp.filter(x=>isCls(x)&&x.l[0]==='9')].filter(a=>a.length).map(a=>`<div>${T(gh,a.map(gr))}</div>`).join('')+`<div>${T(gh,R.grp.filter(x=>!isCls(x)).map(gr),['Total',R.dpt,R.used,pc(R.used,R.dpt)])}</div>`;
+  const wideTime=R.hrs.length>12;
+  const timeCol=wideTime?'':`<div><h3>Waktu pemungutan</h3>${R.hrs.length?T([['Jam'],['Suara',1]],R.hrs.map(h=>[h.l,h.n]))+`<p class="nt" style="margin:3px 0 0;font-size:.9em">Pertama ${hm(R.first)} · terakhir ${hm(R.last)}</p>`:'<p class="nt">Belum ada suara yang masuk.</p>'}</div>`;
   const cr=R.cand.map(x=>{const r=[esc(x.c.no),String(x.c.photo||'').startsWith('data:image/')?`<img class="rp" src="${x.c.photo}" alt="">`:'–',esc(x.c.name),esc(x.c.wakil||'-'),x.n,x.p,x.rank];if(x.rank===1&&x.n>0)r.cls='win';return r});
-  return `<div class="rptwrap"><div class="card noprint"><h2>Narasi pembuka</h2><div class="row"><input placeholder="Tempat pelaksanaan (contoh: Aula SMP Negeri 1 Kajoran)" value="${esc(RK.tempat)}" onchange="RK.tempat=this.value;saveRK()"><input type="date" value="${esc(RK.tgl)}" onchange="RK.tgl=this.value;saveRK()"></div><p class="mut" style="margin:8px 0 0">Tempat kosong = "SMP Negeri 1 Kajoran". Tanggal kosong = tanggal suara pertama masuk. Jam mulai dan selesai diambil otomatis dari suara pertama dan terakhir.</p></div>
+  return `<div class="rptwrap"><div class="card noprint"><h2>Pengaturan lembar rekap</h2><div class="row"><input placeholder="Tempat pelaksanaan (contoh: Aula SMP Negeri 1 Kajoran)" value="${esc(RK.tempat)}" onchange="RK.tempat=this.value;saveRK()"><input type="date" value="${esc(RK.tgl)}" onchange="RK.tgl=this.value;saveRK()"></div><div class="row" style="margin-top:8px"><input placeholder="Nama Pembina OSIS" value="${esc(RK.pembina)}" onchange="RK.pembina=this.value;saveRK()"><input placeholder="Nama Ketua KPU OSIS" value="${esc(RK.ketua)}" onchange="RK.ketua=this.value;saveRK()"></div><p class="mut" style="margin:8px 0 0">Nama Pembina dan Ketua KPU OSIS tampil di kolom tanda tangan (kosong = titik-titik untuk ditulis tangan). Tempat kosong = "SMP Negeri 1 Kajoran". Tanggal kosong = tanggal suara pertama masuk. Jam mulai dan selesai diambil otomatis dari suara pertama dan terakhir.</p></div>
   <div class="row noprint" style="justify-content:flex-end;margin-bottom:12px"><button class="p" onclick="window.print()">Cetak / Simpan PDF</button><button onclick="exportRekap()">Unduh Excel</button></div>
   ${R.warn?`<p class="err noprint">${R.warn}</p>`:''}
   <div class="rpt"><div class="lgs"><img src="logo.png" alt="" onerror="this.remove()"><img src="kpu-osis.png" alt="" onerror="this.remove()"></div>
-  <h1>REKAPITULASI HASIL PEMILIHAN<br>KETUA OSIS DAN WAKIL KETUA OSIS</h1><div class="sc"><b>SMP Negeri 1 Kajoran</b></div><div class="sc">Dicetak pada ${R.tgl}${S.open?' · <b>HASIL SEMENTARA</b>':''}</div>
+  <h1>REKAPITULASI HASIL PEMILIHAN <br class="pb">KETUA OSIS DAN WAKIL KETUA OSIS</h1><div class="sc"><b>SMP Negeri 1 Kajoran</b> · Dicetak pada ${R.tgl}${S.open?' · <b>HASIL SEMENTARA</b>':''}</div>
   ${narasi(R)}
-  <div class="cols"><div><h3>Ringkasan pemilih</h3>${T([['Keterangan'],['Jumlah',1]],R.sum.map(x=>[x[0],x[1]]))}</div>
-  <div><h3>Rekap per kategori</h3>${T([['Kategori'],['Terdaftar',1],['Memilih',1],['Belum',1],['%',1]],R.kat.map(x=>[x.l,x.n,x.u,x.n-x.u,pc(x.u,x.n)]))}</div></div>
+  <div class="cols3"><div><h3>Ringkasan pemilih</h3>${T([['Keterangan'],['Jumlah',1]],R.sum.map(x=>[sh[x[0]]||x[0],x[1]]))}</div>
+  <div><h3>Rekap per kategori</h3>${T([['Kategori'],['Terdaftar',1],['Memilih',1],['Belum',1],['%',1]],R.kat.map(x=>[x.l,x.n,x.u,x.n-x.u,pc(x.u,x.n)]))}</div>${timeCol}</div>
   <h3>Perolehan suara pasangan calon</h3>${T([['No',1],['Foto'],['Calon Ketua'],['Calon Wakil'],['Suara',1],['% suara sah',1],['Peringkat',1]],cr,['','','','Total suara sah',R.total,R.total?'100%':'0%',''])}
   <p class="nt">${R.win}</p>
-  <h3>Rekap partisipasi per kelas</h3><div class="cols"><div>${T(gh,g1.map(gr))}</div><div>${T(gh,g2.map(gr),['Total',R.dpt,R.used,R.unused,pc(R.used,R.dpt)])}</div></div>
-  <h3>Waktu pemungutan suara</h3>${R.hrs.length?`<p class="nt" style="margin:0 0 4px">Suara pertama masuk: ${R.fmt(R.first)} · Suara terakhir masuk: ${R.fmt(R.last)}</p><div class="tw">${T([['Jam'],...R.hrs.map(h=>[h.l,1])],[['Jumlah suara',...R.hrs.map(h=>h.n)]])}</div>`:'<p class="nt">Belum ada suara yang masuk.</p>'}
-  <div class="sig"><div>Mengetahui,<br>Pembina OSIS<div class="ln"></div>(............................)</div><div>Kajoran, ${R.tgl}<br>Ketua KPU OSIS<div class="ln"></div>(............................)</div></div></div></div>`;
+  <h3>Rekap partisipasi per kelas</h3><p class="nt" style="margin:0 0 4px;font-size:.9em">Daftar = pemilih terdaftar · Pilih = pemilih yang menggunakan hak pilih · % = persentase partisipasi</p><div class="cols4">${blocks}</div>
+  ${wideTime?`<h3>Waktu pemungutan suara</h3><p class="nt" style="margin:0 0 4px">Suara pertama masuk: ${R.fmt(R.first)} · Suara terakhir masuk: ${R.fmt(R.last)}</p><div class="tw">${T([['Jam'],...R.hrs.map(h=>[h.l,1])],[['Jumlah suara',...R.hrs.map(h=>h.n)]])}</div>`:''}
+  <div class="sig"><div>Mengetahui,<br>Pembina OSIS<div class="ln"></div>${RK.pembina?`<b class="nm">${esc(RK.pembina)}</b>`:'(............................)'}</div><div>Kajoran, ${R.tgl}<br>Ketua KPU OSIS<div class="ln"></div>${RK.ketua?`<b class="nm">${esc(RK.ketua)}</b>`:'(............................)'}</div></div></div></div>`;
 }
 function exportRekap(){
   if(!window.XLSX){note='Pustaka Excel gagal dimuat. Periksa koneksi internet lalu muat ulang halaman.';return render(true)}
   const R=recap(),wb=XLSX.utils.book_new(),add=(n,a)=>XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(a),n);
-  add('Ringkasan',[['REKAPITULASI HASIL PEMILIHAN KETUA OSIS DAN WAKIL KETUA OSIS'],['SMP Negeri 1 Kajoran'],['Dicetak pada',R.tgl],[],['Keterangan','Jumlah'],...R.sum]);
+  add('Ringkasan',[['REKAPITULASI HASIL PEMILIHAN KETUA OSIS DAN WAKIL KETUA OSIS'],['SMP Negeri 1 Kajoran'],['Dicetak pada',R.tgl],[],['Keterangan','Jumlah'],...R.sum,[],['Pembina OSIS',RK.pembina||''],['Ketua KPU OSIS',RK.ketua||'']]);
   add('Kandidat',[['No','Calon Ketua','Calon Wakil','Suara','% suara sah','Peringkat'],...R.cand.map(x=>[x.c.no,x.c.name,x.c.wakil||'',x.n,x.p,x.rank]),['','','Total suara sah',R.total,'','']]);
   add('Per Kelas',[['Kelas','Terdaftar','Menggunakan hak pilih','Tidak menggunakan','% partisipasi'],...R.grp.map(x=>[x.l,x.n,x.u,x.n-x.u,R.pct(x.u,x.n)]),['Total',R.dpt,R.used,R.unused,R.pct(R.used,R.dpt)]]);
   add('Per Kategori',[['Kategori','Terdaftar','Memilih','Belum memilih','% partisipasi'],...R.kat.map(x=>[x.l,x.n,x.u,x.n-x.u,R.pct(x.u,x.n)])]);

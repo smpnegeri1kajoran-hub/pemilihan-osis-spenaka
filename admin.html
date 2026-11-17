@@ -81,11 +81,11 @@ button.d{color:var(--err)}button:disabled{opacity:.4;cursor:not-allowed}
 .pres.show .pg.fit .pc .photo.ph{min-height:80px!important}
 .pm .w{padding-top:0;padding-bottom:0}
 @media (max-height:820px){.pres.show .pg.fit{margin-top:16px}}
-.rpt .cols3,.rpt .cols4{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}.rpt .cols3>div{flex:1 1 230px;min-width:0}.rpt .cols4>div{flex:1 1 150px;min-width:0}
+.rpt .cols3,.rpt .cols4{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}.rpt .cols3>div{flex:1 1 230px}.rpt .cols4>div{flex:1 1 150px}.rpt{overflow-x:auto}
 @media print{
 .rpt{font-size:10.5px}.rpt .lgs{margin-bottom:2px}.rpt .lgs img{height:44px}.rpt h1 br.pb{display:none}.rpt h1{font-size:13px;margin:2px 0}
 .rpt h3{margin:8px 0 3px;font-size:10.5px}.rpt th,.rpt td{padding:1.5px 4px}.rpt .nar p{margin:5px 0 0;line-height:1.35}
-.rpt .cols3,.rpt .cols4{flex-wrap:nowrap;gap:8px}.rpt .cols3>div:nth-child(1){flex:1.1 1 0}.rpt .cols3>div:nth-child(2){flex:1.3 1 0}.rpt .cols3>div:nth-child(3){flex:.85 1 0}.rpt .cols4>div{flex:1 1 0}
+.rpt{overflow:visible}.rpt .cols3>div,.rpt .cols4>div{min-width:0}.rpt .cols3,.rpt .cols4{flex-wrap:nowrap;gap:8px}.rpt .cols3>div:nth-child(1){flex:1.1 1 0}.rpt .cols3>div:nth-child(2){flex:1.3 1 0}.rpt .cols3>div:nth-child(3){flex:.85 1 0}.rpt .cols4>div{flex:1 1 0}
 .rpt .cols4 table{table-layout:fixed;width:100%}.rpt .cols4 th:first-child,.rpt .cols4 td:first-child{width:28%}
 .rpt .rp{width:30px;height:30px}.rpt .sig{margin-top:12px}.rpt .sig .ln{height:38px}.rpt .nt{margin:4px 0 0}
 }
@@ -508,11 +508,8 @@ function rekapTab(){
   const R=recap(),pc=R.pct;
   const T=(head,rows,tot)=>`<table><tr>${head.map(h=>`<th class="${h[1]?'n':''}">${h[0]}</th>`).join('')}</tr>${rows.map(r=>`<tr class="${r.cls||''}">${r.map((x,i)=>`<td class="${head[i][1]?'n':''}">${x}</td>`).join('')}</tr>`).join('')}${tot?`<tr class="tot">${tot.map((x,i)=>`<td class="${head[i][1]?'n':''}">${x}</td>`).join('')}</tr>`:''}</table>`;
   const gh=[['Kelas'],['Daftar',1],['Pilih',1],['%',1]],gr=x=>[x.l,x.n,x.u,pc(x.u,x.n)];
-  const hm=t=>{const d=new Date(t);return String(d.getHours()).padStart(2,'0')+'.'+String(d.getMinutes()).padStart(2,'0')};
   const sh={'Jumlah pemilih terdaftar':'Pemilih terdaftar','Suara digunakan (sudah memilih)':'Suara digunakan','Suara tidak digunakan (belum memilih)':'Suara tidak digunakan','Persentase partisipasi':'Partisipasi','Persentase tidak memilih':'Tidak memilih'};
   const isCls=x=>/^\d[A-Z]$/.test(x.l),blocks=[R.grp.filter(x=>isCls(x)&&x.l[0]==='7'),R.grp.filter(x=>isCls(x)&&x.l[0]==='8'),R.grp.filter(x=>isCls(x)&&x.l[0]==='9')].filter(a=>a.length).map(a=>`<div>${T(gh,a.map(gr))}</div>`).join('')+`<div>${T(gh,R.grp.filter(x=>!isCls(x)).map(gr),['Total',R.dpt,R.used,pc(R.used,R.dpt)])}</div>`;
-  const wideTime=R.hrs.length>12;
-  const timeCol=wideTime?'':`<div><h3>Waktu pemungutan</h3>${R.hrs.length?T([['Jam'],['Suara',1]],R.hrs.map(h=>[h.l,h.n]))+`<p class="nt" style="margin:3px 0 0;font-size:.9em">Pertama ${hm(R.first)} · terakhir ${hm(R.last)}</p>`:'<p class="nt">Belum ada suara yang masuk.</p>'}</div>`;
   const cr=R.cand.map(x=>{const r=[esc(x.c.no),String(x.c.photo||'').startsWith('data:image/')?`<img class="rp" src="${x.c.photo}" alt="">`:'–',esc(x.c.name),esc(x.c.wakil||'-'),x.n,x.p,x.rank];if(x.rank===1&&x.n>0)r.cls='win';return r});
   return `<div class="rptwrap"><div class="card noprint"><h2>Pengaturan lembar rekap</h2><div class="row"><input placeholder="Tempat pelaksanaan (contoh: Aula SMP Negeri 1 Kajoran)" value="${esc(RK.tempat)}" onchange="RK.tempat=this.value;saveRK()"><input type="date" value="${esc(RK.tgl)}" onchange="RK.tgl=this.value;saveRK()"></div><div class="row" style="margin-top:8px"><input placeholder="Nama Pembina OSIS" value="${esc(RK.pembina)}" onchange="RK.pembina=this.value;saveRK()"><input placeholder="Nama Ketua KPU OSIS" value="${esc(RK.ketua)}" onchange="RK.ketua=this.value;saveRK()"></div><p class="mut" style="margin:8px 0 0">Nama Pembina dan Ketua KPU OSIS tampil di kolom tanda tangan (kosong = titik-titik untuk ditulis tangan). Tempat kosong = "SMP Negeri 1 Kajoran". Tanggal kosong = tanggal suara pertama masuk. Jam mulai dan selesai diambil otomatis dari suara pertama dan terakhir.</p></div>
   <div class="row noprint" style="justify-content:flex-end;margin-bottom:12px"><button class="p" onclick="window.print()">Cetak / Simpan PDF</button><button onclick="exportRekap()">Unduh Excel</button></div>
@@ -521,11 +518,10 @@ function rekapTab(){
   <h1>REKAPITULASI HASIL PEMILIHAN <br class="pb">KETUA OSIS DAN WAKIL KETUA OSIS</h1><div class="sc"><b>SMP Negeri 1 Kajoran</b> · Dicetak pada ${R.tgl}${S.open?' · <b>HASIL SEMENTARA</b>':''}</div>
   ${narasi(R)}
   <div class="cols3"><div><h3>Ringkasan pemilih</h3>${T([['Keterangan'],['Jumlah',1]],R.sum.map(x=>[sh[x[0]]||x[0],x[1]]))}</div>
-  <div><h3>Rekap per kategori</h3>${T([['Kategori'],['Terdaftar',1],['Memilih',1],['Belum',1],['%',1]],R.kat.map(x=>[x.l,x.n,x.u,x.n-x.u,pc(x.u,x.n)]))}</div>${timeCol}</div>
+  <div><h3>Rekap per kategori</h3>${T([['Kategori'],['Terdaftar',1],['Memilih',1],['Belum',1],['%',1]],R.kat.map(x=>[x.l,x.n,x.u,x.n-x.u,pc(x.u,x.n)]))}</div></div>
   <h3>Perolehan suara pasangan calon</h3>${T([['No',1],['Foto'],['Calon Ketua'],['Calon Wakil'],['Suara',1],['% suara sah',1],['Peringkat',1]],cr,['','','','Total suara sah',R.total,R.total?'100%':'0%',''])}
   <p class="nt">${R.win}</p>
   <h3>Rekap partisipasi per kelas</h3><p class="nt" style="margin:0 0 4px;font-size:.9em">Daftar = pemilih terdaftar · Pilih = pemilih yang menggunakan hak pilih · % = persentase partisipasi</p><div class="cols4">${blocks}</div>
-  ${wideTime?`<h3>Waktu pemungutan suara</h3><p class="nt" style="margin:0 0 4px">Suara pertama masuk: ${R.fmt(R.first)} · Suara terakhir masuk: ${R.fmt(R.last)}</p><div class="tw">${T([['Jam'],...R.hrs.map(h=>[h.l,1])],[['Jumlah suara',...R.hrs.map(h=>h.n)]])}</div>`:''}
   <div class="sig"><div>Mengetahui,<br>Pembina OSIS<div class="ln"></div>${RK.pembina?`<b class="nm">${esc(RK.pembina)}</b>`:'(............................)'}</div><div>Kajoran, ${R.tgl}<br>Ketua KPU OSIS<div class="ln"></div>${RK.ketua?`<b class="nm">${esc(RK.ketua)}</b>`:'(............................)'}</div></div></div></div>`;
 }
 function exportRekap(){

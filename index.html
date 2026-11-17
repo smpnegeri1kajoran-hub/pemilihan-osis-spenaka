@@ -81,6 +81,7 @@ button.d{color:var(--err)}button:disabled{opacity:.4;cursor:not-allowed}
 .pm .w{padding-top:0;padding-bottom:0}
 @media (max-height:820px){.pres.show .pg.fit{margin-top:16px}}
 .chip.sr{color:#e08a00;border-color:#e08a00}
+.mm .donetxt{font-size:clamp(2.4rem,4.8vw,4.6rem)!important;line-height:1.2;text-wrap:balance;max-width:1200px;margin:6px auto 4px}
 </style>
 </head>
 <body>
@@ -114,7 +115,7 @@ if((MODE==='vote'||MODE==='monitor')&&fsOk){
 let hide=false,present=false;try{hide=localStorage.getItem('osis_hide')==='1'}catch(e){}
 const KAT={putra:{t:'Siswa Laki-laki',c:'#2f6fe4'},putri:{t:'Siswa Perempuan',c:'#d6458a'},guru:{t:'Guru',c:'#12a37f'},karyawan:{t:'Karyawan',c:'#e08a00'},siswa:{t:'Siswa',c:'#7a86a6'}};
 const katOf=(g,jk)=>g==='Guru'?'guru':g==='Karyawan'?'karyawan':jk==='P'?'putri':jk==='L'?'putra':'siswa';
-let mrv=false;
+let mrv=false,monSig='',monCnt=null;
 const scan={on:false,stream:null,t:0,to:0,facing:'user',last:'',lastT:0,hint:''};
 if(MODE==='vote'){
   /* sentuh di luar kolom isian / tombol -> logo & judul tampil lagi */
@@ -377,7 +378,20 @@ function render(force){
   if(MODE==='monitor'){
     const T=S.tayang||{},tv=tayangOn(T);
     document.body.classList.toggle('mm',!tv);document.body.classList.toggle('pm',tv);
-    $('app').innerHTML=fatal?`<div class="card err">${esc(fatal)}</div>`:tv?tayangView(T):monitorView();return}
+    if(tv){
+      /* jangan gambar ulang jika tidak ada perubahan; angka hitung mundur diganti di tempat (mencegah kedip) */
+      const struct=T.phase==='count'?'count':'show|'+JSON.stringify(T.res||[])+'|'+T.total+'|'+T.dpt+'|'+T.used+'|'+Object.keys(S.candidates).length;
+      const cd=$('app').querySelector('.cdn');
+      if(struct===monSig&&$('app').querySelector('.pres')){
+        if(T.phase==='count'&&cd&&monCnt!==T.cnt){monCnt=T.cnt;cd.textContent=T.cnt;cd.style.animation='none';void cd.offsetWidth;cd.style.animation=''}
+        return;
+      }
+      monSig=struct;monCnt=T.cnt;
+    }else{
+      if(T.phase==='done'){if(monSig==='done'&&$('app').querySelector('.donewrap'))return;monSig='done'}else monSig='';
+      monCnt=null;
+    }
+    $('app').innerHTML=fatal?`<div class="card err">${esc(fatal)}</div>`:tv?tayangView(T):T.phase==='done'?doneView():monitorView();return}
   const open=S.open?'<span class="chip on">PEMILIHAN DIBUKA</span>':'<span class="chip off">PEMILIHAN DITUTUP</span>';
   const A=MODE==='admin',btn='';
   if(present&&S.open)present=false;
@@ -439,6 +453,9 @@ function tayangView(T){
   <p class="mut tot">Total ${total} suara masuk dari ${dpt} pemilih terdaftar (partisipasi ${dpt?Math.round(done/dpt*100):0}%)</p></div>`;
 }
 function tayangOn(T){return !!((T.phase==='count'||T.phase==='show')&&T.at&&Math.abs(Date.now()-T.at)<6*3600*1000)}
+function doneView(){
+  return `<div class="donewrap">${fsOk?'<button class="fsbtn" onclick="goFull()">⛶ Layar penuh</button>':''}<header class="hd"><div class="logos"><img class="logo" src="logo.png" alt="" onerror="this.remove()"><img class="logo" src="kpu-osis.png" alt="" onerror="this.remove()"></div><h1 class="donetxt">Pemilihan suara telah selesai dilaksanakan</h1><div class="sch">SMP Negeri 1 Kajoran</div></header><p class="emp">Terima kasih kepada seluruh pemilih atas partisipasinya.</p></div>`;
+}
 function monitorView(){
   const now=Date.now(),ms=x=>x&&x.toMillis?x.toMillis():now;
   const L=Object.values(S.active).filter(a=>a&&now-ms(a.t)<150000).sort((a,b)=>ms(a.s||a.t)-ms(b.s||b.t)).slice(0,5);

@@ -454,7 +454,7 @@ function tayangView(T){
 }
 function tayangOn(T){return !!((T.phase==='count'||T.phase==='show')&&T.at&&Math.abs(Date.now()-T.at)<6*3600*1000)}
 function doneView(){
-  return `<div class="donewrap">${fsOk?'<button class="fsbtn" onclick="goFull()">⛶ Layar penuh</button>':''}<header class="hd"><div class="logos"><img class="logo" src="logo.png" alt="" onerror="this.remove()"><img class="logo" src="kpu-osis.png" alt="" onerror="this.remove()"></div><h1 class="donetxt">Pemilihan suara telah selesai dilaksanakan</h1><div class="sch">SMP Negeri 1 Kajoran</div></header><p class="emp">Terima kasih kepada seluruh pemilih atas partisipasinya.</p></div>`;
+  return `<div class="donewrap">${fsOk?'<button class="fsbtn" onclick="goFull()">⛶ Layar penuh</button>':''}<header class="hd"><div class="logos"><img class="logo" src="logo.png" alt="" onerror="this.remove()"><img class="logo" src="kpu-osis.png" alt="" onerror="this.remove()"><div class="sch">SMP Negeri 1 Kajoran</div></div><h1 class="donetxt">Pemilihan suara telah selesai dilaksanakan</h1></header><p class="emp">Terima kasih kepada seluruh pemilih atas partisipasinya.</p></div>`;
 }
 function monitorView(){
   const now=Date.now(),ms=x=>x&&x.toMillis?x.toMillis():now;
